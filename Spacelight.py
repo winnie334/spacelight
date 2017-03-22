@@ -11,6 +11,7 @@ add warning sign for explosions
 make start/ending more clear
 add sounds
 improve the menu
+learn git
 """
 
 import pygame
