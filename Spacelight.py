@@ -345,11 +345,8 @@ class MainShip:
 		# self.original = pygame.image.load('spaceshipmain2.png')
 		# self.image = self.original
 		self.justcrashed = 0
-		self.shipanimation = []
 		self.framecounter = 0
-		for i in range(1, 12):
-			frame = pygame.image.load(r'mainship\\' + str(i) + '.gif').convert_alpha()
-			self.shipanimation.append(frame)
+		self.shipanimation = animate('mainship', 11)
 		self.original = self.shipanimation[0]
 		self.image = self.original
 		self.mask = pygame.mask.from_surface(self.image)
@@ -630,9 +627,12 @@ class Deathstar(pygame.sprite.Sprite):
 		pygame.sprite.Sprite.__init__(self)
 		self.xpos, self.ypos = pos[0], pos[1]
 		self.targetx, self.targety = gamewidth / 8, gameheight / 2
+		self.aimpointx, self.aimpointy = gamewidth / 8, gameheight / 2
+		self.laserx, self.lasery = 41, 59
 		self.attackspeed = attackspeed
 		self.animation = animate('deathstar', 10)
 		self.image = self.animation[0]
+		self.aimpoint = pygame.image.load('aimpoint.png')
 		self.charge = 0
 		self.isshooting = 0
 		self.angle = 0
@@ -652,11 +652,17 @@ class Deathstar(pygame.sprite.Sprite):
 		self.image = self.animation[int(self.charge / self.attackspeed * 10)]
 		self.image = rot_center(self.image, self.angle)
 		gamesurface.blit(self.image, [self.xpos, self.ypos])
-		pygame.draw.rect(gamesurface, Colors.red, [self.targetx, self.targety, 5, 5])
 
 	def newtarget(self):
-		self.targetx = gamewidth / 8
-		self.targety = randint(gameheight / 10, 9 * gameheight / 10)
+		# gets a random new target location. Note that the +80 for the x value is hardcoded, this is the half of the
+		# width of the mainship to make the aimpoint and ship match.
+		self.targetx = gamewidth / 8 + 80
+		self.targety = randint(gameheight / 8, 7 * gameheight / 8)
+		self.aimpointx = self.targetx - self.aimpoint.get_rect().width / 2
+		self.aimpointy = self.targety - self.aimpoint.get_rect().height / 2
+
+	def updateaimpoint(self):
+		gamesurface.blit(self.aimpoint, [self.aimpointx, self.aimpointy])
 
 	def rotate(self):
 		ydif = self.ypos - self.targety
@@ -728,6 +734,8 @@ def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlis
 		laser.update(mainship, enemyshiplist)
 	for meteorite in Meteorite.list:
 		meteorite.update(mainship, enemyshiplist)
+	for deathstar in deathstarlist:
+		deathstar.updateaimpoint()
 	for healthbar in healthbarlist:
 		healthbar.update()
 	pygame.display.update()
@@ -770,7 +778,7 @@ def gameloop():
 		enemyship = EnemyShip(healthbarenemy.currenthp, 10, 150, 30, healthbarenemy)
 		enemyshiplist.append(enemyship)
 	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
-	ds = Deathstar([800, 600], 100)
+	ds = Deathstar([800, 600], 500)
 	deathstarlist = [ds]
 	stars = Stars()
 	event = Event(200)
