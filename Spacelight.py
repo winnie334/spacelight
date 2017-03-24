@@ -17,7 +17,7 @@ learn git
 import pygame
 from random import randint
 import os
-from huh import rot_center, playsound
+from huh import rot_center, playsound, animate
 from math import sin, cos, radians, degrees, atan
 
 gamewidth = 1280
@@ -625,6 +625,47 @@ class Meteorite(pygame.sprite.Sprite):
 					return
 
 
+class Deathstar(pygame.sprite.Sprite):
+	def __init__(self, pos, attackspeed):
+		pygame.sprite.Sprite.__init__(self)
+		self.xpos, self.ypos = pos[0], pos[1]
+		self.targetx, self.targety = gamewidth / 8, gameheight / 2
+		self.attackspeed = attackspeed
+		self.animation = animate('deathstar', 10)
+		self.image = self.animation[0]
+		self.charge = 0
+		self.isshooting = 0
+		self.angle = 0
+		self.rotatingtarget = 0
+		self.newtarget()
+
+	def update(self):
+		self.rotate()
+		if self.isshooting <= 0:
+			if self.charge == 0:
+				self.newtarget()
+			self.charge += 1
+			self.isshooting = self.charge == self.attackspeed
+		if self.isshooting > 0:
+			self.isshooting -= 0.1
+			self.charge = 0
+		self.image = self.animation[int(self.charge / self.attackspeed * 10)]
+		self.image = rot_center(self.image, self.angle)
+		gamesurface.blit(self.image, [self.xpos, self.ypos])
+		pygame.draw.rect(gamesurface, Colors.red, [self.targetx, self.targety, 5, 5])
+
+	def newtarget(self):
+		self.targetx = gamewidth / 8
+		self.targety = randint(gameheight / 10, 9 * gameheight / 10)
+
+	def rotate(self):
+		ydif = self.ypos - self.targety
+		xdif = self.xpos - self.targetx
+		preciseangle = degrees(atan(ydif / xdif))
+		self.rotatingtarget = - (self.rotatingtarget + preciseangle) / 2
+		self.angle += (self.rotatingtarget - self.angle) / self.attackspeed
+
+
 class Event:
 	def __init__(self, chaoslevel):
 		self.timenoevent = 0
@@ -668,13 +709,15 @@ def getinput(mainship):
 	return False
 
 
-def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event):
+def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist):
 	# draws everything that needs to be drawn in the right order
 	# actually does a lot, lot more
 	# as in, run the entire game
 	event.check()
 	gamesurface.fill(Colors.space)
 	stars.drawstars()
+	for deathstar in deathstarlist:
+		deathstar.update()
 	mainship.update()
 	for enemyship in enemyshiplist:
 		if enemyship.isdead == 1:
@@ -690,9 +733,9 @@ def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event):
 	pygame.display.update()
 
 
-def countdown(mainship, stars, enemyshiplist, healthbarlist, event):
+def countdown(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist):
 	# we will draw the first frame, then save that as an image to constantly draw our numbers onto.
-	drawstuff(mainship, stars, enemyshiplist, healthbarlist, event)
+	drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
 	pygame.image.save(gamesurface, 'startview.jpg')
 	startview = pygame.image.load('startview.jpg')
 	displayspeed = 800
@@ -712,6 +755,7 @@ def countdown(mainship, stars, enemyshiplist, healthbarlist, event):
 			gamesurface.blit(image, [xpos, ypos])
 			pygame.display.update()
 			clock.tick(60)
+	os.remove('startview.jpg')
 
 
 def gameloop():
@@ -721,18 +765,20 @@ def gameloop():
 	healthbarlist = [healthbarmain]
 	enemyshiplist = []
 	for i in range(1):
-		healthbarenemy = HealthBars(15, 1, i)
+		healthbarenemy = HealthBars(3, 1, i)
 		healthbarlist.append(healthbarenemy)
 		enemyship = EnemyShip(healthbarenemy.currenthp, 10, 150, 30, healthbarenemy)
 		enemyshiplist.append(enemyship)
 	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
+	ds = Deathstar([800, 600], 100)
+	deathstarlist = [ds]
 	stars = Stars()
 	event = Event(200)
-	countdown(mainship, stars, enemyshiplist, healthbarlist, event)
+	countdown(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
 
 	while not game_exit:
 		game_exit = getinput(mainship)
-		drawstuff(mainship, stars, enemyshiplist, healthbarlist, event)
+		drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
 		clock.tick(fps)
 		loop += 1
 	pygame.quit()
