@@ -15,4 +15,9 @@ def playsound(mixer, sound):
 	test = pygame.mixer.Sound(sound)
 	test.play()
 
-
+def animate(directory, frames):
+	animation = []
+	for i in range(frames):
+		image = pygame.image.load(directory +  r'\frame' + str(i) + '.gif').convert_alpha()
+		animation.append(image)
+	return animation
