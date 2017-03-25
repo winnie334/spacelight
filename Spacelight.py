@@ -17,7 +17,7 @@ learn git
 import pygame
 from random import randint
 import os
-from huh import rot_center, playsound, animate
+from huh import rot_center, playsound, animate, getpercentages
 from math import sin, cos, radians, degrees, atan
 
 gamewidth = 1280
@@ -96,6 +96,7 @@ class Colors:
 	hb_green = (50, 200, 10)
 	hb_red = (253, 44, 38)
 	menu_background = (189, 188, 246)
+	deathstar_laser = (20, 150, 2)
 
 
 class Stars:
@@ -437,7 +438,7 @@ class Shoot(pygame.sprite.Sprite):
 		Shoot.laserspritelist.append(self)
 		self.angle = angle
 		self.rad = radians(self.angle)
-		self.xangle, self.yangle = self.getpercentages()
+		self.xangle, self.yangle = getpercentages(self.angle)
 		self.xspeed = 17 * isityou * self.xangle
 		self.yspeed = 17 * isityou * self.yangle
 		if isityou == 1:
@@ -480,21 +481,6 @@ class Shoot(pygame.sprite.Sprite):
 				self.blitx = self.xpos
 				self.blity = self.ypos - 5 * self.yangle - 2.5 if self.yangle >= 0 else self.ypos + 25 * self.yangle - 2.5
 			gamesurface.blit(self.image, [self.blitx, self.blity])
-
-	def getpercentages(self):
-		# this returns two values that should give an idea what the rate of the x/y axis is.
-		# e.g. if it moves 100 units, how many of those are up and how many are right.
-		if 0 <= self.angle % 360 < 90 or 180 <= self.angle % 360 < 270:
-			ypercent = self.angle % 90 / 90
-			xpercent = 1 - ypercent
-		else:
-			xpercent = self.angle % 90 / 90
-			ypercent = 1 - xpercent
-		if 90 <= self.angle % 360 <= 270:
-			xpercent *= -1
-		if 0 <= self.angle % 360 <= 180:
-			ypercent *= -1
-		return xpercent, ypercent
 
 	def checkforcollision(self, mainship, enemyshiplist):
 		if self.isityou == 1:
@@ -628,15 +614,21 @@ class Deathstar(pygame.sprite.Sprite):
 		self.xpos, self.ypos = pos[0], pos[1]
 		self.targetx, self.targety = gamewidth / 8, gameheight / 2
 		self.aimpointx, self.aimpointy = gamewidth / 8, gameheight / 2
-		self.laserx, self.lasery = 41, 59
+		self.laserx, self.lasery = self.xpos - 33, self.xpos - 15
 		self.attackspeed = attackspeed
+		self.beamlength = 3 / self.attackspeed	 # the smaller beamlength, the longer the beam will be fired.
+		self.laserspeed = 70			 # this is the time it takes to get to the target
 		self.animation = animate('deathstar', 10)
 		self.image = self.animation[0]
 		self.aimpoint = pygame.image.load('aimpoint.png')
 		self.charge = 0
 		self.isshooting = 0
 		self.angle = 0
+		self.xangle, self.yangle = getpercentages(self.angle)
 		self.rotatingtarget = 0
+		self.beamparticles = []
+		self.beamsize = 8
+		self.beamdetail = 10
 		self.newtarget()
 
 	def update(self):
@@ -647,11 +639,13 @@ class Deathstar(pygame.sprite.Sprite):
 			self.charge += 1
 			self.isshooting = self.charge == self.attackspeed
 		if self.isshooting > 0:
-			self.isshooting -= 0.1
+			self.shoot()
+			self.isshooting -= self.beamlength
 			self.charge = 0
 		self.image = self.animation[int(self.charge / self.attackspeed * 10)]
 		self.image = rot_center(self.image, self.angle)
 		gamesurface.blit(self.image, [self.xpos, self.ypos])
+		self.updatebeam()
 
 	def newtarget(self):
 		# gets a random new target location. Note that the +80 for the x value is hardcoded, this is the half of the
@@ -670,6 +664,30 @@ class Deathstar(pygame.sprite.Sprite):
 		preciseangle = degrees(atan(ydif / xdif))
 		self.rotatingtarget = - (self.rotatingtarget + preciseangle) / 2
 		self.angle += (self.rotatingtarget - self.angle) / self.attackspeed
+		rad = radians(self.angle)
+		self.laserx = -15 * sin(rad) + (-33) * cos(rad) + 74 + self.xpos
+		self.lasery = -15 * cos(rad) - (-33) * sin(rad) + 74 + self.ypos
+		self.xangle, self.yangle = getpercentages(self.angle)
+
+	def shoot(self):
+		xspeed = (self.targetx - self.laserx) / self.laserspeed
+		yspeed = (self.targety - self.lasery) / self.laserspeed
+		self.beamparticles.append([self.laserx, self.lasery, xspeed, yspeed])
+
+	def updatebeam(self):
+		for particle in self.beamparticles:
+			particle[0] += particle[2]
+			particle[1] += particle[3]
+			if (particle[0] < -50 or particle[0] > gamewidth + 50) and \
+				(particle[1] < -50 or particle[1] > gameheight + 50):
+				self.beamparticles.remove(particle)
+			delay = self.beamsize / self.beamdetail
+			for i in range(self.beamdetail):
+				x, y = particle[0], particle[1]
+				add = i * delay
+				offset = self.beamsize / 2
+				size = self.beamsize
+				pygame.draw.rect(gamesurface, Colors.deathstar_laser, [x + add + offset, y + add + offset, size, size])
 
 
 class Event:
@@ -773,13 +791,14 @@ def gameloop():
 	healthbarlist = [healthbarmain]
 	enemyshiplist = []
 	for i in range(1):
-		healthbarenemy = HealthBars(3, 1, i)
+		healthbarenemy = HealthBars(15, 1, i)
 		healthbarlist.append(healthbarenemy)
 		enemyship = EnemyShip(healthbarenemy.currenthp, 10, 150, 30, healthbarenemy)
 		enemyshiplist.append(enemyship)
 	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
-	ds = Deathstar([800, 600], 500)
-	deathstarlist = [ds]
+	ds = Deathstar([800, 600], 50)
+	ds2 = Deathstar([800, 200], 20)
+	deathstarlist = [ds, ds2]
 	stars = Stars()
 	event = Event(200)
 	countdown(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
