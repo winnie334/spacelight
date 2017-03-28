@@ -6,12 +6,12 @@ otherwise, you can use it from anywhere.
 
 full list of TODOs:
 rethink the fuel concept
+make the deathstar do reasonable damage
 add EXPLOSIONS!! to hide the bugs
 add warning sign for explosions
-make start/ending more clear
+make ending more clear
 add sounds
 improve the menu
-learn git
 """
 
 import pygame
@@ -96,7 +96,7 @@ class Colors:
 	hb_green = (50, 200, 10)
 	hb_red = (253, 44, 38)
 	menu_background = (189, 188, 246)
-	deathstar_laser = (20, 150, 2)
+	deathstar_laser = (70, 250, 2)
 
 
 class Stars:
@@ -617,7 +617,7 @@ class Deathstar(pygame.sprite.Sprite):
 		self.laserx, self.lasery = self.xpos - 33, self.xpos - 15
 		self.attackspeed = attackspeed
 		self.beamlength = 3 / self.attackspeed	 # the smaller beamlength, the longer the beam will be fired.
-		self.laserspeed = 70			 # this is the time it takes to get to the target
+		self.laserspeed = 10			 # this is the time it takes to get to the target
 		self.animation = animate('deathstar', 10)
 		self.image = self.animation[0]
 		self.aimpoint = pygame.image.load('aimpoint.png')
@@ -627,11 +627,11 @@ class Deathstar(pygame.sprite.Sprite):
 		self.xangle, self.yangle = getpercentages(self.angle)
 		self.rotatingtarget = 0
 		self.beamparticles = []
-		self.beamsize = 8
-		self.beamdetail = 10
+		self.beamsize = 6
+		self.beamdetail = 20
 		self.newtarget()
 
-	def update(self):
+	def update(self, objectslist):
 		self.rotate()
 		if self.isshooting <= 0:
 			if self.charge == 0:
@@ -645,7 +645,7 @@ class Deathstar(pygame.sprite.Sprite):
 		self.image = self.animation[int(self.charge / self.attackspeed * 10)]
 		self.image = rot_center(self.image, self.angle)
 		gamesurface.blit(self.image, [self.xpos, self.ypos])
-		self.updatebeam()
+		self.updatebeam(objectslist)
 
 	def newtarget(self):
 		# gets a random new target location. Note that the +80 for the x value is hardcoded, this is the half of the
@@ -674,20 +674,39 @@ class Deathstar(pygame.sprite.Sprite):
 		yspeed = (self.targety - self.lasery) / self.laserspeed
 		self.beamparticles.append([self.laserx, self.lasery, xspeed, yspeed])
 
-	def updatebeam(self):
+	def updatebeam(self, objectslist):
 		for particle in self.beamparticles:
+			delayx = particle[2] / self.beamdetail
+			delayy = particle[3] / self.beamdetail
+			for i in range(self.beamdetail):
+				x, y = particle[0], particle[1]
+				addx, addy = i * delayx, i * delayy
+				offset = - self.beamsize / 2
+				size = self.beamsize
+				pygame.draw.rect(gamesurface, Colors.deathstar_laser, [x + addx + offset, y + addy + offset, size, size])
 			particle[0] += particle[2]
 			particle[1] += particle[3]
 			if (particle[0] < -50 or particle[0] > gamewidth + 50) and \
 				(particle[1] < -50 or particle[1] > gameheight + 50):
 				self.beamparticles.remove(particle)
-			delay = self.beamsize / self.beamdetail
-			for i in range(self.beamdetail):
-				x, y = particle[0], particle[1]
-				add = i * delay
-				offset = self.beamsize / 2
-				size = self.beamsize
-				pygame.draw.rect(gamesurface, Colors.deathstar_laser, [x + add + offset, y + add + offset, size, size])
+			self.checkforcollision(particle, objectslist)
+
+	def checkforcollision(self, particle, objectslist):
+		mainship = objectslist[0][0]
+		for objects in objectslist:
+			for object in objects:
+				try:
+					if object.mask.get_at((int(particle[0] - object.xpos), int(particle[1] - object.ypos))):
+						self.beamparticles.remove(particle)
+						if object == mainship:
+							mainship.takedamage(1)
+				except IndexError:
+					pass
+				# commented code for if you want collision with lasers
+				# except AttributeError:
+				# 	if particle[0] - 10 < object.xpos < particle[0] + 10 and \
+				# 		particle[1] - 10 < object.ypos < particle[1] + 10:
+				# 		self.beamparticles.remove(particle)
 
 
 class Event:
@@ -741,7 +760,7 @@ def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlis
 	gamesurface.fill(Colors.space)
 	stars.drawstars()
 	for deathstar in deathstarlist:
-		deathstar.update()
+		deathstar.update([[mainship], Meteorite.list])
 	mainship.update()
 	for enemyship in enemyshiplist:
 		if enemyship.isdead == 1:
@@ -796,9 +815,8 @@ def gameloop():
 		enemyship = EnemyShip(healthbarenemy.currenthp, 10, 150, 30, healthbarenemy)
 		enemyshiplist.append(enemyship)
 	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
-	ds = Deathstar([800, 600], 50)
-	ds2 = Deathstar([800, 200], 20)
-	deathstarlist = [ds, ds2]
+	ds = Deathstar([800, 600], 1000)
+	deathstarlist = [ds]
 	stars = Stars()
 	event = Event(200)
 	countdown(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
