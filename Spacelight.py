@@ -347,7 +347,7 @@ class MainShip:
 		# self.image = self.original
 		self.justcrashed = 0
 		self.framecounter = 0
-		self.shipanimation = animate('mainship', 11)
+		self.shipanimation = animate('mainship')
 		self.original = self.shipanimation[0]
 		self.image = self.original
 		self.mask = pygame.mask.from_surface(self.image)
@@ -490,6 +490,7 @@ class Shoot(pygame.sprite.Sprite):
 						enemyship.takedamage(1)
 						self.kill()
 						Shoot.laserlist.remove(self)
+						Explosion([self.xpos, self.ypos], 0)
 						return
 				except IndexError:
 					pass
@@ -499,6 +500,7 @@ class Shoot(pygame.sprite.Sprite):
 					mainship.takedamage(1)
 					self.kill()
 					Shoot.laserlist.remove(self)
+					Explosion([self.xpos, self.ypos], 0)
 					return
 			except IndexError:
 				pass
@@ -520,6 +522,7 @@ class Shoot(pygame.sprite.Sprite):
 					Shoot.laserlist.remove(self)
 					meteorite.kill()
 					Meteorite.list.remove(meteorite)
+					Explosion([self.xpos, self.ypos], 0)
 					return
 			except IndexError:
 				pass
@@ -618,7 +621,7 @@ class Deathstar(pygame.sprite.Sprite):
 		self.attackspeed = attackspeed
 		self.beamlength = 3 / self.attackspeed	 # the smaller beamlength, the longer the beam will be fired.
 		self.laserspeed = 10			 # this is the time it takes to get to the target
-		self.animation = animate('deathstar', 10)
+		self.animation = animate('deathstar')
 		self.image = self.animation[0]
 		self.aimpoint = pygame.image.load('aimpoint.png')
 		self.charge = 0
@@ -633,6 +636,7 @@ class Deathstar(pygame.sprite.Sprite):
 
 	def update(self, objectslist):
 		self.rotate()
+		# self.targety = (self.targety + 1) % gameheight
 		if self.isshooting <= 0:
 			if self.charge == 0:
 				self.newtarget()
@@ -652,10 +656,10 @@ class Deathstar(pygame.sprite.Sprite):
 		# width of the mainship to make the aimpoint and ship match.
 		self.targetx = gamewidth / 8 + 80
 		self.targety = randint(gameheight / 8, 7 * gameheight / 8)
-		self.aimpointx = self.targetx - self.aimpoint.get_rect().width / 2
-		self.aimpointy = self.targety - self.aimpoint.get_rect().height / 2
 
 	def updateaimpoint(self):
+		self.aimpointx = self.targetx - self.aimpoint.get_rect().width / 2
+		self.aimpointy = self.targety - self.aimpoint.get_rect().height / 2
 		gamesurface.blit(self.aimpoint, [self.aimpointx, self.aimpointy])
 
 	def rotate(self):
@@ -707,6 +711,31 @@ class Deathstar(pygame.sprite.Sprite):
 				# 	if particle[0] - 10 < object.xpos < particle[0] + 10 and \
 				# 		particle[1] - 10 < object.ypos < particle[1] + 10:
 				# 		self.beamparticles.remove(particle)
+
+
+class Explosion(pygame.sprite.Sprite):
+	# yay, explosions! The more the better, as chaos hides the countless bugs.
+
+	list = []
+
+	def __init__(self, centerpos, size):
+		pygame.sprite.Sprite.__init__(self)
+		Explosion.list.append(self)
+		self.centerx, self.centery = centerpos[0], centerpos[1]
+		self.animation = animate('explosions\\' + str(size))
+		self.currentframe = 0
+		self.delay = 0
+		self.image = self.animation[0]
+		self.xpos = self.centerx - self.image.get_rect().width / 2
+		self.ypos = self.centery - self.image.get_rect().height / 2
+
+	def update(self):
+		gamesurface.blit(self.animation[self.currentframe], [self.xpos, self.ypos])
+		self.currentframe += (self.delay % 5 == 0)
+		self.delay += 1
+		if self.currentframe >= len(self.animation):
+			Explosion.list.remove(self)
+			self.remove()
 
 
 class Event:
@@ -773,6 +802,8 @@ def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlis
 		meteorite.update(mainship, enemyshiplist)
 	for deathstar in deathstarlist:
 		deathstar.updateaimpoint()
+	for explosion in Explosion.list:
+		explosion.update()
 	for healthbar in healthbarlist:
 		healthbar.update()
 	pygame.display.update()
@@ -809,13 +840,13 @@ def gameloop():
 	healthbarmain = HealthBars(20, -1, 0)
 	healthbarlist = [healthbarmain]
 	enemyshiplist = []
-	for i in range(1):
-		healthbarenemy = HealthBars(15, 1, i)
+	for i in range(3):
+		healthbarenemy = HealthBars(10, 1, i)
 		healthbarlist.append(healthbarenemy)
 		enemyship = EnemyShip(healthbarenemy.currenthp, 10, 150, 30, healthbarenemy)
 		enemyshiplist.append(enemyship)
 	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
-	ds = Deathstar([800, 600], 1000)
+	ds = Deathstar([800, 600], 300)
 	deathstarlist = [ds]
 	stars = Stars()
 	event = Event(200)

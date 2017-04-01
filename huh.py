@@ -1,4 +1,4 @@
-import pygame
+import pygame, os, os.path
 
 
 def rot_center(image, angle):
@@ -16,8 +16,9 @@ def playsound(mixer, sound):
 	test.play()
 
 
-def animate(directory, frames):
+def animate(directory):
 	animation = []
+	frames = len([name for name in os.listdir(directory) if os.path.isfile(os.path.join(directory, name))])
 	for i in range(frames):
 		image = pygame.image.load(directory +  r'\frame' + str(i) + '.gif').convert_alpha()
 		animation.append(image)
