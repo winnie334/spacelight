@@ -8,7 +8,8 @@ full list of TODOs:
 rethink the fuel concept
 make the deathstar do reasonable damage
 add EXPLOSIONS!! to hide the bugs
-add warning sign for explosions
+add warning sign for meteorites
+add a rarity system for meteorites
 make ending more clear
 add sounds
 improve the menu
@@ -585,6 +586,7 @@ class Meteorite(pygame.sprite.Sprite):
 			self.kill()
 			Meteorite.list.remove(self)
 			mainship.takedamage(self.damage)
+			Explosion([self.xpos, self.ypos], 0)
 			return
 		for enemyship in enemyshiplist:
 			self.offsetx = int(enemyship.xpos - self.xpos)
@@ -596,6 +598,7 @@ class Meteorite(pygame.sprite.Sprite):
 				except ValueError:
 					pass
 				enemyship.takedamage(self.damage)
+				Explosion([self.xpos, self.ypos], 0)
 				return
 		for meteorite in Meteorite.list:
 			if meteorite != self:
@@ -606,6 +609,7 @@ class Meteorite(pygame.sprite.Sprite):
 					try:
 						Meteorite.list.remove(self)
 						Meteorite.list.remove(meteorite)
+						Explosion([self.xpos, self.ypos], 0)
 					except ValueError:
 						pass
 					return
@@ -702,6 +706,7 @@ class Deathstar(pygame.sprite.Sprite):
 				try:
 					if object.mask.get_at((int(particle[0] - object.xpos), int(particle[1] - object.ypos))):
 						self.beamparticles.remove(particle)
+						Explosion([particle[0], particle[1]], 0)
 						if object == mainship:
 							mainship.takedamage(1)
 				except IndexError:
@@ -725,6 +730,11 @@ class Explosion(pygame.sprite.Sprite):
 		self.animation = animate('explosions\\' + str(size))
 		self.currentframe = 0
 		self.delay = 0
+		self.image = self.animation[0]
+		r = randint(-4, 4)
+		self.size = [self.image.get_rect().width + r, self.image.get_rect().height + r]
+		for i in range(len(self.animation)):
+			self.animation[i] = pygame.transform.scale(self.animation[i], self.size)
 		self.image = self.animation[0]
 		self.xpos = self.centerx - self.image.get_rect().width / 2
 		self.ypos = self.centery - self.image.get_rect().height / 2
@@ -840,7 +850,7 @@ def gameloop():
 	healthbarmain = HealthBars(20, -1, 0)
 	healthbarlist = [healthbarmain]
 	enemyshiplist = []
-	for i in range(3):
+	for i in range(1):
 		healthbarenemy = HealthBars(10, 1, i)
 		healthbarlist.append(healthbarenemy)
 		enemyship = EnemyShip(healthbarenemy.currenthp, 10, 150, 30, healthbarenemy)
