@@ -7,10 +7,11 @@ otherwise, you can use it from anywhere.
 full list of TODOs:
 rethink the fuel concept
 make the deathstar do reasonable damage
-add EXPLOSIONS!! to hide the bugs
+make the deathstar killable?
+add more EXPLOSIONS!! to hide the bugs
 add warning sign for meteorites
-add a rarity system for meteorites
-make ending more clear
+perhaps add a 'BINGO ACTIVE' sign or something like that
+add some sort of storyline/progress
 add sounds
 improve the menu
 """
@@ -330,6 +331,7 @@ class MainShip:
 
 	def __init__(self, health, speed, fuel, healthbar):
 		self.health = health
+		self.isdead = 0
 		self.healthbar = healthbar
 		self.fuel = fuel
 		self.bullets = 0
@@ -358,10 +360,7 @@ class MainShip:
 		self.health -= dmg
 		if self.healthbar.currenthp == -10:
 			print('ooh no im dead')
-
-	def checkhealth(self):
-		if self.health <= 0:
-			print('im dead')
+			self.isdead = 1
 
 	def shoot(self):
 		laser = Shoot(self.xpos, self.ypos, 1, self.angle)
@@ -537,7 +536,16 @@ class Meteorite(pygame.sprite.Sprite):
 	def __init__(self):
 		pygame.sprite.Sprite.__init__(self)
 		Meteorite.list.append(self)
-		self.original = pygame.image.load('meteorites\meteorite' + str(randint(1, 15)) + '.png')
+		rarity = randint(1, 100)
+		dir = 'meteorites\\'
+		if 1 <= rarity < 70:
+			dir += '0'
+		if 70 <= rarity < 95:
+			dir += '1'
+		if 95 <= rarity:
+			dir += '2'
+		dirsize = len([name for name in os.listdir(dir) if os.path.isfile(os.path.join(dir, name))])
+		self.original = pygame.image.load(dir + '\\' + str(randint(0, dirsize - 1)) + '.png')
 		self.size = randint(60, 80)
 		self.rotspeed = randint(5, 30) / 10
 		self.original = pygame.transform.scale(self.original, [self.size, self.size])
@@ -800,7 +808,8 @@ def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlis
 	stars.drawstars()
 	for deathstar in deathstarlist:
 		deathstar.update([[mainship], Meteorite.list])
-	mainship.update()
+	if mainship.isdead == 0:
+		mainship.update()
 	for enemyship in enemyshiplist:
 		if enemyship.isdead == 1:
 			enemyshiplist.remove(enemyship)
