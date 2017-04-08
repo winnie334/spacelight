@@ -6,6 +6,7 @@ otherwise, you can use it from anywhere.
 
 full list of TODOs:
 rethink the fuel concept
+add a shield for the player?
 make the deathstar do reasonable damage
 make the deathstar killable?
 add more EXPLOSIONS!! to hide the bugs
@@ -106,6 +107,8 @@ class Stars:
 	# each star has its own list assigned, each with the follwing information:
 	# [[xpos, ypos], (color), size, speed]
 
+	speed = 1
+
 	def __init__(self):
 		self.starlist = []
 		self.staramount = 150
@@ -117,11 +120,11 @@ class Stars:
 		# generates random values for each parameter of the star. The value start determines
 		# whether it spawns in the middle of the screen or out of bounds to the right
 		if start:
-			pos = [randint(0, gamewidth), randint(0, gameheight)]
+			pos = [randint(0, gamewidth), randint(0, gameheight - 10)]
 		else:
-			pos = [gamewidth + 10, randint(0, gameheight)]
+			pos = [gamewidth + 10, randint(0, gameheight - 10)]
 		size = randint(2, 5)
-		speed = randint(1, 2)
+		speed = randint(1, 5)
 		if 0 != randint(0, self.staramount):
 			color = (randint(245, 255), randint(245, 255), randint(245, 255))
 		else:
@@ -131,7 +134,7 @@ class Stars:
 	def drawstars(self):
 		for index, star in enumerate(self.starlist):
 			pygame.draw.rect(gamesurface, star[1], [star[0][0], star[0][1], star[2], star[2]])
-			star[0][0] -= star[3]
+			star[0][0] -= star[3] * Stars.speed
 			if star[0][0] < -10:
 				newstar = self.generatenewstar(0)
 				self.starlist[index] = newstar
@@ -141,6 +144,7 @@ class HealthBars:
 	# Draws the health for each ship.
 
 	size = 3
+	list = []
 
 	def __init__(self, health, pos, number):
 		# the var pos causes the health bar to appear either left or right on the screen
@@ -234,6 +238,8 @@ class EnemyShip(pygame.sprite.Sprite):
 	# speed must be higher than 10.
 
 	shipspritelist = pygame.sprite.Group()
+	list = []
+	difficulty = 0
 
 	def __init__(self, health, boost, mspeed, aspeed, healthbar):
 		pygame.sprite.Sprite.__init__(self)
@@ -463,14 +469,14 @@ class Shoot(pygame.sprite.Sprite):
 		self.image = pygame.transform.rotate(self.image, self.angle)
 		self.blitx, self.blity = self.xpos, self.ypos
 
-	def update(self, mainship, enemyshiplist):
+	def update(self, mainship):
 		self.xpos += self.xspeed
 		self.ypos += self.yspeed
 		if self.xpos + 50 < 0 or self.xpos > gamewidth or self.ypos < 0 or self.ypos > gameheight + 50:
 			self.kill()
 			Shoot.laserlist.remove(self)
 		else:
-			Shoot.checkforcollision(self, mainship, enemyshiplist)
+			Shoot.checkforcollision(self, mainship)
 			# absolutely no idea how this works. It tries to blit in a location so that the actual x and y pos seem
 			# more clear, but it's more guesswork. Use the following command here to see where the actual positions are
 			# pygame.draw.rect(gamesurface, Colors.red, [self.xpos - 2.5, self.ypos - 2.5, 5, 5])
@@ -482,9 +488,9 @@ class Shoot(pygame.sprite.Sprite):
 				self.blity = self.ypos - 5 * self.yangle - 2.5 if self.yangle >= 0 else self.ypos + 25 * self.yangle - 2.5
 			gamesurface.blit(self.image, [self.blitx, self.blity])
 
-	def checkforcollision(self, mainship, enemyshiplist):
+	def checkforcollision(self, mainship):
 		if self.isityou == 1:
-			for enemyship in enemyshiplist:
+			for enemyship in EnemyShip.list:
 				try:
 					if enemyship.mask.get_at((int(self.xpos - enemyship.xpos), int(self.ypos - enemyship.ypos))):
 						enemyship.takedamage(1)
@@ -557,7 +563,7 @@ class Meteorite(pygame.sprite.Sprite):
 			self.xpos = randint(0, gamewidth)
 			self.ypos = -250 if randint(0, 1) else gameheight + 250
 		else:
-			self.xpos = -250 if randint(0, 1) else gamewidth + 250
+			self.xpos = gamewidth + 250
 			self.ypos = randint(0, gameheight)
 		self.offsetx = 0
 		self.offsety = 0
@@ -573,7 +579,7 @@ class Meteorite(pygame.sprite.Sprite):
 		dmgsp = max([abs(self.speedx), abs(self.speedy)])
 		self.damage = 1 * (0 < dmgsp <= 6) + 2 * (6 < dmgsp <= 8) + 3 * (8 < dmgsp)
 
-	def update(self, mainship, enemyshiplist):
+	def update(self, mainship):
 		self.xpos += self.speedx
 		self.ypos += self.speedy
 		self.angle += self.rotspeed
@@ -582,12 +588,12 @@ class Meteorite(pygame.sprite.Sprite):
 			self.kill()
 			Meteorite.list.remove(self)
 		else:
-			self.checkforcollision(mainship, enemyshiplist)
+			self.checkforcollision(mainship)
 			gamesurface.blit(self.image, [self.xpos, self.ypos])
 		# this last line may not be needed
 		self.mask = pygame.mask.from_surface(self.image)
 
-	def checkforcollision(self, mainship, enemyshiplist):
+	def checkforcollision(self, mainship):
 		self.offsetx = int(mainship.xpos - self.xpos)
 		self.offsety = int(mainship.ypos - self.ypos)
 		if self.mask.overlap(mainship.mask, (self.offsetx, self.offsety)) is not None:
@@ -596,7 +602,7 @@ class Meteorite(pygame.sprite.Sprite):
 			mainship.takedamage(self.damage)
 			Explosion([self.xpos, self.ypos], 0)
 			return
-		for enemyship in enemyshiplist:
+		for enemyship in EnemyShip.list:
 			self.offsetx = int(enemyship.xpos - self.xpos)
 			self.offsety = int(enemyship.ypos - self.ypos)
 			if self.mask.overlap(enemyship.mask, (self.offsetx, self.offsety)) is not None:
@@ -799,7 +805,7 @@ def getinput(mainship):
 	return False
 
 
-def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist):
+def drawstuff(mainship, stars, event, deathstarlist, warp):
 	# draws everything that needs to be drawn in the right order
 	# actually does a lot, lot more
 	# as in, run the entire game
@@ -810,27 +816,30 @@ def drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlis
 		deathstar.update([[mainship], Meteorite.list])
 	if mainship.isdead == 0:
 		mainship.update()
-	for enemyship in enemyshiplist:
+	for enemyship in EnemyShip.list:
 		if enemyship.isdead == 1:
-			enemyshiplist.remove(enemyship)
+			EnemyShip.list.remove(enemyship)
 		else:
 			enemyship.update(mainship)
 	for laser in Shoot.laserlist:
-		laser.update(mainship, enemyshiplist)
+		laser.update(mainship)
 	for meteorite in Meteorite.list:
-		meteorite.update(mainship, enemyshiplist)
+		meteorite.update(mainship)
 	for deathstar in deathstarlist:
 		deathstar.updateaimpoint()
 	for explosion in Explosion.list:
 		explosion.update()
-	for healthbar in healthbarlist:
+	for healthbar in HealthBars.list:
 		healthbar.update()
+	if not EnemyShip.list:
+		HealthBars.list = [HealthBars.list[0]]
+		warp.update()
 	pygame.display.update()
 
 
-def countdown(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist):
+def countdown(mainship, stars, event, deathstarlist, warp):
 	# we will draw the first frame, then save that as an image to constantly draw our numbers onto.
-	drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
+	drawstuff(mainship, stars, event, deathstarlist, warp)
 	pygame.image.save(gamesurface, 'startview.jpg')
 	startview = pygame.image.load('startview.jpg')
 	displayspeed = 800
@@ -853,27 +862,57 @@ def countdown(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlis
 	os.remove('startview.jpg')
 
 
+class Warp:
+	# totally not stolen from Warblade
+
+	def __init__(self):
+		self.modifier = 0.3
+		self.warptime = 0 	# will go to 100, to see what % of the warp we are in.
+		self.timescalled = 0
+
+	def update(self):
+		if self.timescalled % 4 == 0:
+			Stars.speed += self.modifier
+			self.modifier -= 0.006
+			self.warptime += 1
+			if self.warptime == 100:
+				EnemyShip.difficulty += 1
+				newenemy(0)
+				self.warptime = 0
+				self.modifier = 0.3
+				Stars.speed = 1
+		self.timescalled += 1
+
+
+def newenemy(number):
+	health = 3 + EnemyShip.difficulty * 2
+	boost = 10 + EnemyShip.difficulty
+	mspeed = 151 - EnemyShip.difficulty * 10 * (EnemyShip.difficulty < 15)
+	aspeed = 30 - EnemyShip.difficulty * 3 * (EnemyShip.difficulty < 10)
+	healthbarenemy = HealthBars(health, 1, number)
+	HealthBars.list.append(healthbarenemy)
+	enemyship = EnemyShip(health, boost, mspeed, aspeed, healthbarenemy)
+	EnemyShip.list.append(enemyship)
+
+
 def gameloop():
 	game_exit = 0
 	loop = 1
 	healthbarmain = HealthBars(20, -1, 0)
-	healthbarlist = [healthbarmain]
-	enemyshiplist = []
+	HealthBars.list = [healthbarmain]
 	for i in range(1):
-		healthbarenemy = HealthBars(10, 1, i)
-		healthbarlist.append(healthbarenemy)
-		enemyship = EnemyShip(healthbarenemy.currenthp, 10, 150, 30, healthbarenemy)
-		enemyshiplist.append(enemyship)
+		newenemy(i)
 	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
-	ds = Deathstar([800, 600], 300)
-	deathstarlist = [ds]
+	# ds = Deathstar([800, 600], 300)
+	deathstarlist = []
 	stars = Stars()
 	event = Event(200)
-	countdown(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
+	warp = Warp()
+	countdown(mainship, stars, event, deathstarlist, warp)
 
 	while not game_exit:
 		game_exit = getinput(mainship)
-		drawstuff(mainship, stars, enemyshiplist, healthbarlist, event, deathstarlist)
+		drawstuff(mainship, stars, event, deathstarlist, warp)
 		clock.tick(fps)
 		loop += 1
 	pygame.quit()
