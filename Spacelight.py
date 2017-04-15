@@ -133,8 +133,9 @@ class Stars:
 
 	def drawstars(self):
 		for index, star in enumerate(self.starlist):
-			pygame.draw.rect(gamesurface, star[1], [star[0][0], star[0][1], star[2], star[2]])
+			pygame.draw.rect(gamesurface, star[1], [star[0][0], star[0][1], star[2] + 2 * Stars.speed - 2, star[2]])
 			star[0][0] -= star[3] * Stars.speed
+			star[1] = (star[1][0], 255 - Stars.speed * 28, 255 - Stars.speed * 28)
 			if star[0][0] < -10:
 				newstar = self.generatenewstar(0)
 				self.starlist[index] = newstar
