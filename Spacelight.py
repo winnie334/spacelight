@@ -248,8 +248,8 @@ class EnemyShip(pygame.sprite.Sprite):
 		self.health = health
 		self.healthbar = healthbar
 		self.isdead = 0
-		self.xpos = gamewidth - (gamewidth / 4)
-		self.ypos = gameheight / 2
+		self.xpos = gamewidth
+		self.targetx = 3 * gamewidth / 4
 		self.angle = 0
 		self.rotatingtarget = 0
 		self.currentframe = 1
@@ -268,8 +268,10 @@ class EnemyShip(pygame.sprite.Sprite):
 			self.enemyshipanimation.append(frame)
 		self.image = self.enemyshipanimation[0]
 		self.mask = pygame.mask.from_surface(self.image)
+		self.ypos = randint(0, gameheight - self.enemyshipanimation[0].get_rect().height)
 
 	def update(self, mainship):
+		self.xpos += (self.targetx - self.xpos) * 0.03
 		self.rotate(mainship)
 		if self.boostamount != 0:
 			self.ypos += self.boostamount
