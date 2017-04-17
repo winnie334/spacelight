@@ -133,7 +133,8 @@ class Stars:
 
 	def drawstars(self):
 		for index, star in enumerate(self.starlist):
-			pygame.draw.rect(gamesurface, star[1], [star[0][0], star[0][1], star[2] + 2 * Stars.speed - 2, star[2]])
+			newwidth = star[2] + (2 * Stars.speed - 2) * star[3] / 2
+			pygame.draw.rect(gamesurface, star[1], [star[0][0], star[0][1], newwidth, star[2]])
 			star[0][0] -= star[3] * Stars.speed
 			star[1] = (star[1][0], 255 - Stars.speed * 28, 255 - Stars.speed * 28)
 			if star[0][0] < -10:
@@ -248,7 +249,7 @@ class EnemyShip(pygame.sprite.Sprite):
 		self.health = health
 		self.healthbar = healthbar
 		self.isdead = 0
-		self.xpos = gamewidth
+		self.xpos = gamewidth + randint(0, 200)
 		self.targetx = 3 * gamewidth / 4
 		self.angle = 0
 		self.rotatingtarget = 0
