@@ -634,6 +634,10 @@ class Meteorite(pygame.sprite.Sprite):
 
 
 class Deathstar(pygame.sprite.Sprite):
+	# A sprite so good it needed functionality.
+
+	list = []
+
 	def __init__(self, pos, attackspeed):
 		pygame.sprite.Sprite.__init__(self)
 		self.xpos, self.ypos = pos[0], pos[1]
@@ -651,6 +655,7 @@ class Deathstar(pygame.sprite.Sprite):
 		self.angle = 0
 		self.xangle, self.yangle = getpercentages(self.angle)
 		self.rotatingtarget = 0
+		self.aimingup = randint(0, 1)
 		self.beamparticles = []
 		self.beamsize = 6
 		self.beamdetail = 20
@@ -658,10 +663,10 @@ class Deathstar(pygame.sprite.Sprite):
 
 	def update(self, objectslist):
 		self.rotate()
-		# self.targety = (self.targety + 1) % gameheight
+		self.moveaimpoint()
 		if self.isshooting <= 0:
-			if self.charge == 0:
-				self.newtarget()
+			# if self.charge == 0:
+			# 	self.newtarget()
 			self.charge += 1
 			self.isshooting = self.charge == self.attackspeed
 		if self.isshooting > 0:
@@ -683,6 +688,16 @@ class Deathstar(pygame.sprite.Sprite):
 		self.aimpointx = self.targetx - self.aimpoint.get_rect().width / 2
 		self.aimpointy = self.targety - self.aimpoint.get_rect().height / 2
 		gamesurface.blit(self.aimpoint, [self.aimpointx, self.aimpointy])
+
+	def moveaimpoint(self):
+		if self.aimingup:
+			self.targety -= 1
+			if self.targety - self.aimpoint.get_rect().height / 2 <= 0:
+				self.aimingup = 0
+		else:
+			self.targety += 1
+			if self.targety + self.aimpoint.get_rect().height / 2 >= gameheight:
+				self.aimingup = 1
 
 	def rotate(self):
 		ydif = self.ypos - self.targety
@@ -809,14 +824,14 @@ def getinput(mainship):
 	return False
 
 
-def drawstuff(mainship, stars, event, deathstarlist, warp):
+def drawstuff(mainship, stars, event, warp):
 	# draws everything that needs to be drawn in the right order
 	# actually does a lot, lot more
 	# as in, run the entire game
 	event.check()
 	gamesurface.fill(Colors.space)
 	stars.drawstars()
-	for deathstar in deathstarlist:
+	for deathstar in Deathstar.list:
 		deathstar.update([[mainship], Meteorite.list])
 	if mainship.isdead == 0:
 		mainship.update()
@@ -829,7 +844,7 @@ def drawstuff(mainship, stars, event, deathstarlist, warp):
 		laser.update(mainship)
 	for meteorite in Meteorite.list:
 		meteorite.update(mainship)
-	for deathstar in deathstarlist:
+	for deathstar in Deathstar.list:
 		deathstar.updateaimpoint()
 	for explosion in Explosion.list:
 		explosion.update()
@@ -841,9 +856,9 @@ def drawstuff(mainship, stars, event, deathstarlist, warp):
 	pygame.display.update()
 
 
-def countdown(mainship, stars, event, deathstarlist, warp):
+def countdown(mainship, stars, event, warp):
 	# we will draw the first frame, then save that as an image to constantly draw our numbers onto.
-	drawstuff(mainship, stars, event, deathstarlist, warp)
+	drawstuff(mainship, stars, event, warp)
 	pygame.image.save(gamesurface, 'startview.jpg')
 	startview = pygame.image.load('startview.jpg')
 	displayspeed = 800
@@ -877,11 +892,16 @@ class Warp:
 	def update(self):
 		if self.timescalled % 4 == 0:
 			Stars.speed += self.modifier
-			self.modifier -= 0.006
+			self.modifier -= 0.006	 # should be half the starting modifier when in 50%
 			self.warptime += 1
 			if self.warptime == 100:
+				number = 0
 				EnemyShip.difficulty += 1
-				newenemy(0)
+				newenemy(number)
+				for i in range(EnemyShip.difficulty):
+					if 1 == randint(1, 5):
+						number += 1
+						newenemy(number)
 				self.warptime = 0
 				self.modifier = 0.3
 				Stars.speed = 1
@@ -889,14 +909,22 @@ class Warp:
 
 
 def newenemy(number):
-	health = 3 + EnemyShip.difficulty * 2
-	boost = 10 + EnemyShip.difficulty
-	mspeed = 151 - EnemyShip.difficulty * 10 * (EnemyShip.difficulty < 15)
-	aspeed = 30 - EnemyShip.difficulty * 3 * (EnemyShip.difficulty < 10)
+	health = 3 + (EnemyShip.difficulty - number * randint(1, 2)) * 2
+	boost = 10 + EnemyShip.difficulty - number * randint(1, 2)
+	mspeed = 151 - (EnemyShip.difficulty - number * randint(1, 2)) * 10 * (EnemyShip.difficulty < 15)
+	aspeed = 150 - (EnemyShip.difficulty - number * randint(1, 2)) * 15 * (EnemyShip.difficulty < 10)
 	healthbarenemy = HealthBars(health, 1, number)
 	HealthBars.list.append(healthbarenemy)
 	enemyship = EnemyShip(health, boost, mspeed, aspeed, healthbarenemy)
 	EnemyShip.list.append(enemyship)
+	if EnemyShip.difficulty >= 3 and len(EnemyShip.list) <= 2 and randint(0, 1):
+		dsaspeed = 500 - EnemyShip.difficulty * 50 * (EnemyShip.difficulty < 10)
+		if randint(0, 1):
+			dspos = randint(gameheight / 10, 2 * gameheight / 10)
+		else:
+			dspos = randint(8 * gameheight / 10, 9 * gameheight / 10)
+		deathstar = Deathstar([800, dspos], dsaspeed)
+		Deathstar.list.append(deathstar)
 
 
 def gameloop():
@@ -908,15 +936,14 @@ def gameloop():
 		newenemy(i)
 	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
 	# ds = Deathstar([800, 600], 300)
-	deathstarlist = []
 	stars = Stars()
-	event = Event(200)
+	event = Event(2000)
 	warp = Warp()
-	countdown(mainship, stars, event, deathstarlist, warp)
+	countdown(mainship, stars, event, warp)
 
 	while not game_exit:
 		game_exit = getinput(mainship)
-		drawstuff(mainship, stars, event, deathstarlist, warp)
+		drawstuff(mainship, stars, event, warp)
 		clock.tick(fps)
 		loop += 1
 	pygame.quit()
