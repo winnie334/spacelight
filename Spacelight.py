@@ -213,10 +213,7 @@ class HealthBars:
 				# get a list of all the positions of green bonus hp's, then takes a random position of those
 				# and makes it 0 in the list self.bonushp
 				greenones = [i for i, x in enumerate(self.bonushp) if x == 1]
-				try:
-					self.bonushp[greenones[randint(0, len(greenones))]] = 0
-				except IndexError:
-					pass
+				self.bonushp[greenones[randint(0, len(greenones) - 1)]] = 0
 				if self.checkforbingo():
 					self.currenthp = -10
 
@@ -450,8 +447,8 @@ class Shoot(pygame.sprite.Sprite):
 		self.angle = angle
 		self.rad = radians(self.angle)
 		self.xangle, self.yangle = getpercentages(self.angle)
-		self.xspeed = 17 * isityou * self.xangle
-		self.yspeed = 17 * isityou * self.yangle
+		self.xspeed = 22 * isityou * self.xangle
+		self.yspeed = 22 * isityou * self.yangle
 		if isityou == 1:
 			self.image = pygame.image.load('laser2.png')
 			# these formulas calculate where the position of the laser is after rotating the image
@@ -921,9 +918,9 @@ def newenemy(number):
 	if EnemyShip.difficulty >= 3 and len(EnemyShip.list) <= 2 and randint(0, 1):
 		dsaspeed = 500 - EnemyShip.difficulty * 50 * (EnemyShip.difficulty < 10)
 		if randint(0, 1):
-			dspos = randint(gameheight / 10, 2 * gameheight / 10)
+			dspos = randint(0, gameheight / 10)
 		else:
-			dspos = randint(8 * gameheight / 10, 9 * gameheight / 10)
+			dspos = randint(7 * gameheight / 10, 8 * gameheight / 10)
 		deathstar = Deathstar([800, dspos], dsaspeed)
 		Deathstar.list.append(deathstar)
 
