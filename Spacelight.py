@@ -36,6 +36,7 @@ soundmixer = pygame.mixer.init()
 
 class Menu:
 	def __init__(self):
+		playsound(0, "soundtrack.wav")
 		self.inmenu = 1
 		self.hoverover = [0]
 		self.sb = pygame.image.load('button0d.png')
