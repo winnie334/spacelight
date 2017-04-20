@@ -5,16 +5,19 @@ also, note to self: if you use init it's only for that instance, accessable with
 otherwise, you can use it from anywhere.
 
 full list of TODOs:
-rethink the fuel concept
-add a shield for the player?
-make the deathstar do reasonable damage
 make the deathstar killable?
 add more EXPLOSIONS!! to hide the bugs
-add warning sign for meteorites
-perhaps add a 'BINGO ACTIVE' sign or something like that
 add some sort of storyline/progress
 add sounds
 improve the menu
+
+full list of MAYBES:
+powerups
+fuel concept
+shield for the player
+nerf deathstar damage a bit/make it a more lategame enemy
+warning sign for meteorites
+bingo active sign
 """
 
 import pygame
@@ -496,19 +499,19 @@ class Shoot(pygame.sprite.Sprite):
 				try:
 					if enemyship.mask.get_at((int(self.xpos - enemyship.xpos), int(self.ypos - enemyship.ypos))):
 						enemyship.takedamage(1)
-						self.kill()
-						Shoot.laserlist.remove(self)
-						Explosion([self.xpos, self.ypos], 0)
+						self.hit()
 						return
 				except IndexError:
 					pass
+			for deathstar in Deathstar.list:
+				if (self.xpos - deathstar.centerx)**2 + (self.ypos - deathstar.centery)**2 <= deathstar.radius**2:
+					deathstar.takedamage(1)
+					self.hit()
 		if self.isityou == -1:
 			try:
 				if mainship.mask.get_at((int(self.xpos - mainship.xpos), int(self.ypos - mainship.ypos))):
 					mainship.takedamage(1)
-					self.kill()
-					Shoot.laserlist.remove(self)
-					Explosion([self.xpos, self.ypos], 0)
+					self.hit()
 					return
 			except IndexError:
 				pass
@@ -526,14 +529,17 @@ class Shoot(pygame.sprite.Sprite):
 		for meteorite in Meteorite.list:
 			try:
 				if meteorite.mask.get_at((int(self.xpos - meteorite.xpos), int(self.ypos - meteorite.ypos))):
-					self.kill()
-					Shoot.laserlist.remove(self)
+					self.hit()
 					meteorite.kill()
 					Meteorite.list.remove(meteorite)
-					Explosion([self.xpos, self.ypos], 0)
 					return
 			except IndexError:
 				pass
+
+	def hit(self):
+		self.kill()
+		Shoot.laserlist.remove(self)
+		Explosion([self.xpos, self.ypos], 0)
 
 
 class Meteorite(pygame.sprite.Sprite):
@@ -639,6 +645,7 @@ class Deathstar(pygame.sprite.Sprite):
 	def __init__(self, pos, attackspeed):
 		pygame.sprite.Sprite.__init__(self)
 		self.xpos, self.ypos = pos[0], pos[1]
+		self.health = 5
 		self.targetx, self.targety = gamewidth / 8, gameheight / 2
 		self.aimpointx, self.aimpointy = gamewidth / 8, gameheight / 2
 		self.laserx, self.lasery = self.xpos - 33, self.xpos - 15
@@ -647,6 +654,9 @@ class Deathstar(pygame.sprite.Sprite):
 		self.laserspeed = 10			 # this is the time it takes to get to the target
 		self.animation = animate('deathstar')
 		self.image = self.animation[0]
+		self.centerx = self.xpos + self.image.get_rect().width / 2
+		self.centery = self.ypos + self.image.get_rect().height / 2
+		self.radius = self.image.get_rect().width / 2
 		self.aimpoint = pygame.image.load('aimpoint.png')
 		self.charge = 0
 		self.isshooting = 0
@@ -660,6 +670,7 @@ class Deathstar(pygame.sprite.Sprite):
 		self.newtarget()
 
 	def update(self, objectslist):
+		self.checkhealth()
 		self.rotate()
 		self.moveaimpoint()
 		if self.isshooting <= 0:
@@ -747,6 +758,22 @@ class Deathstar(pygame.sprite.Sprite):
 				# 	if particle[0] - 10 < object.xpos < particle[0] + 10 and \
 				# 		particle[1] - 10 < object.ypos < particle[1] + 10:
 				# 		self.beamparticles.remove(particle)
+
+	def takedamage(self, amount):
+		self.health -= 1
+
+	def checkhealth(self):
+		if self.health <= 0:
+			self.health -= 1
+			if randint(0, self.health % 7) == 0:
+				x, y = 0, 0
+				while (x - self.centerx)**2 + (y - self.centery)**2 >= self.radius**2:
+					x = randint(self.xpos, self.xpos + 2 * self.radius)
+					y = randint(self.ypos, self.ypos + 2 * self.radius)
+				Explosion([x, y], 0)
+			if self.health <= -100:
+				self.kill()
+				Deathstar.list.remove(self)
 
 
 class Explosion(pygame.sprite.Sprite):
