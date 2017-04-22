@@ -5,11 +5,12 @@ also, note to self: if you use init it's only for that instance, accessable with
 otherwise, you can use it from anywhere.
 
 full list of TODOs:
-make the deathstar killable?
+make the deathstar flash on hit, perhaps show health
 add more EXPLOSIONS!! to hide the bugs
-add some sort of storyline/progress
+add some sort of storyline/progress (level counter!)
 add sounds
 improve the menu
+gameover display
 
 full list of MAYBES:
 powerups
@@ -21,10 +22,10 @@ bingo active sign
 """
 
 import pygame
-from random import randint
+from random import randint, uniform
 import os
 from huh import rot_center, playsound, animate, getpercentages
-from math import sin, cos, radians, degrees, atan
+from math import sin, cos, radians, degrees, atan, pi
 
 gamewidth = 1280
 gameheight = 800
@@ -104,6 +105,7 @@ class Colors:
 	hb_red = (253, 44, 38)
 	menu_background = (189, 188, 246)
 	deathstar_laser = (70, 250, 2)
+	enemyship_red = (70, 20, 20)
 
 
 class Stars:
@@ -231,6 +233,35 @@ class HealthBars:
 		if self.bonushp[2] == self.bonushp[4] == self.bonushp[6] == 0:
 			return 1
 		return 0
+
+
+class LevelCounter:
+	# provides a not so practical but cool way to display the current level
+	# the list blocks holds the following information for each block:
+	# [angle, size, color, speed]
+
+	blocks = []
+	rotationspeed = 0.05
+	radius = 50
+
+	def __init__(self):
+		self.centerx = LevelCounter.radius * 2
+		self.centery = gameheight - LevelCounter.radius * 2
+
+	def update(self):
+		for block in LevelCounter.blocks:
+			block[0] = (block[0] + LevelCounter.rotationspeed + block[3]) % (2 * pi)
+			posx = LevelCounter.radius * cos(block[0]) + self.centerx
+			posy = LevelCounter.radius * sin(block[0]) + self.centery
+			blitx, blity = posx - block[1] / 2, posy - block[1] / 2
+			pygame.draw.rect(gamesurface, block[2], [blitx, blity, 10, 10])
+		pygame.draw.rect(gamesurface, Colors.hb_green, [self.centerx - 5, self.centery - 5, 10, 10])
+
+	def newblock(type):
+		colors = [Colors.red, Colors.deathstar_laser]
+		sizes = [10, 15]
+		blockcolor, blocksize, blockspeed = colors[type], sizes[type], uniform(-0.04, 0.04)
+		LevelCounter.blocks.append([uniform(0, 2 * pi), blocksize, blockcolor, blockspeed])
 
 
 class EnemyShip(pygame.sprite.Sprite):
@@ -849,7 +880,7 @@ def getinput(mainship):
 	return False
 
 
-def drawstuff(mainship, stars, event, warp):
+def drawstuff(mainship, stars, event, warp, levelcounter):
 	# draws everything that needs to be drawn in the right order
 	# actually does a lot, lot more
 	# as in, run the entire game
@@ -862,6 +893,7 @@ def drawstuff(mainship, stars, event, warp):
 		mainship.update()
 	for enemyship in EnemyShip.list:
 		if enemyship.isdead == 1:
+			LevelCounter.newblock(0)
 			EnemyShip.list.remove(enemyship)
 		else:
 			enemyship.update(mainship)
@@ -878,12 +910,13 @@ def drawstuff(mainship, stars, event, warp):
 	if not EnemyShip.list:
 		HealthBars.list = [HealthBars.list[0]]
 		warp.update()
+	levelcounter.update()
 	pygame.display.update()
 
 
-def countdown(mainship, stars, event, warp):
+def countdown(mainship, stars, event, warp, levelcounter):
 	# we will draw the first frame, then save that as an image to constantly draw our numbers onto.
-	drawstuff(mainship, stars, event, warp)
+	drawstuff(mainship, stars, event, warp, levelcounter)
 	pygame.image.save(gamesurface, 'startview.jpg')
 	startview = pygame.image.load('startview.jpg')
 	displayspeed = 800
@@ -909,6 +942,8 @@ def countdown(mainship, stars, event, warp):
 class Warp:
 	# totally not stolen from Warblade
 
+	level = 0
+
 	def __init__(self):
 		self.modifier = 0.3
 		self.warptime = 0 	# will go to 100, to see what % of the warp we are in.
@@ -917,11 +952,14 @@ class Warp:
 	def update(self):
 		if self.timescalled % 4 == 0:
 			Stars.speed += self.modifier
+			LevelCounter.rotationspeed += self.modifier / 60
+			LevelCounter.radius += self.modifier * 4
 			self.modifier -= 0.006	 # should be half the starting modifier when in 50%
 			self.warptime += 1
 			if self.warptime == 100:
 				number = 0
 				EnemyShip.difficulty += 1
+				Warp.level += 1
 				newenemy(number)
 				for i in range(EnemyShip.difficulty):
 					if 1 == randint(1, 5):
@@ -964,11 +1002,12 @@ def gameloop():
 	stars = Stars()
 	event = Event(2000)
 	warp = Warp()
-	countdown(mainship, stars, event, warp)
+	levelcounter = LevelCounter()
+	countdown(mainship, stars, event, warp, levelcounter)
 
 	while not game_exit:
 		game_exit = getinput(mainship)
-		drawstuff(mainship, stars, event, warp)
+		drawstuff(mainship, stars, event, warp, levelcounter)
 		clock.tick(fps)
 		loop += 1
 	pygame.quit()
