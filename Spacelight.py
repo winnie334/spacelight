@@ -6,6 +6,7 @@ otherwise, you can use it from anywhere.
 
 full list of TODOs:
 make the deathstar flash on hit, perhaps show health
+deathstar spawn in animation
 add more EXPLOSIONS!! to hide the bugs
 add some sort of storyline/progress (level counter!)
 add sounds
@@ -260,7 +261,7 @@ class LevelCounter:
 	def newblock(type):
 		colors = [Colors.red, Colors.deathstar_laser]
 		sizes = [10, 15]
-		blockcolor, blocksize, blockspeed = colors[type], sizes[type], uniform(-0.04, 0.04)
+		blockcolor, blocksize, blockspeed = colors[type], sizes[type], uniform(-0.02, 0.02)
 		LevelCounter.blocks.append([uniform(0, 2 * pi), blocksize, blockcolor, blockspeed])
 
 
@@ -285,6 +286,7 @@ class EnemyShip(pygame.sprite.Sprite):
 		self.targetx = 3 * gamewidth / 4
 		self.angle = 0
 		self.rotatingtarget = 0
+		self.rotatespeed = uniform(0.03, 0.05)
 		self.currentframe = 1
 		self.currentframecounter = 0
 		self.maxboost = boost
@@ -352,7 +354,7 @@ class EnemyShip(pygame.sprite.Sprite):
 		xdif = self.xpos - mainship.xpos
 		preciseangle = degrees(atan(ydif / xdif))
 		self.rotatingtarget = (self.rotatingtarget + preciseangle) / 2
-		self.angle += (self.rotatingtarget - self.angle) * 0.05
+		self.angle += (self.rotatingtarget - self.angle) * self.rotatespeed
 
 	def shoot(self):
 		laser = Shoot(self.xpos, self.ypos, -1, -self.angle)
@@ -478,11 +480,12 @@ class Shoot(pygame.sprite.Sprite):
 		# isityou makes the laser go left/right, with a value of -1/1
 		pygame.sprite.Sprite.__init__(self)
 		Shoot.laserspritelist.append(self)
+		self.laserspeed = 22
 		self.angle = angle
 		self.rad = radians(self.angle)
 		self.xangle, self.yangle = getpercentages(self.angle)
-		self.xspeed = 22 * isityou * self.xangle
-		self.yspeed = 22 * isityou * self.yangle
+		self.xspeed = self.laserspeed * isityou * self.xangle
+		self.yspeed = self.laserspeed * isityou * self.yangle
 		if isityou == 1:
 			self.image = pygame.image.load('laser2.png')
 			# these formulas calculate where the position of the laser is after rotating the image
@@ -569,7 +572,10 @@ class Shoot(pygame.sprite.Sprite):
 
 	def hit(self):
 		self.kill()
-		Shoot.laserlist.remove(self)
+		try:
+			Shoot.laserlist.remove(self)
+		except ValueError:
+			pass
 		Explosion([self.xpos, self.ypos], 0)
 
 
@@ -676,13 +682,13 @@ class Deathstar(pygame.sprite.Sprite):
 	def __init__(self, pos, attackspeed):
 		pygame.sprite.Sprite.__init__(self)
 		self.xpos, self.ypos = pos[0], pos[1]
-		self.health = 5
+		self.health = randint(5, 10)
 		self.targetx, self.targety = gamewidth / 8, gameheight / 2
 		self.aimpointx, self.aimpointy = gamewidth / 8, gameheight / 2
 		self.laserx, self.lasery = self.xpos - 33, self.xpos - 15
 		self.attackspeed = attackspeed
 		self.beamlength = 3 / self.attackspeed	 # the smaller beamlength, the longer the beam will be fired.
-		self.laserspeed = 10			 # this is the time it takes to get to the target
+		self.laserspeed = 10		 # this is the time it takes to get to the target
 		self.animation = animate('deathstar')
 		self.image = self.animation[0]
 		self.centerx = self.xpos + self.image.get_rect().width / 2
@@ -697,7 +703,7 @@ class Deathstar(pygame.sprite.Sprite):
 		self.aimingup = randint(0, 1)
 		self.beamparticles = []
 		self.beamsize = 6
-		self.beamdetail = 20
+		self.beamdetail = randint(15, 25)
 		self.newtarget()
 
 	def update(self, objectslist):
@@ -803,6 +809,7 @@ class Deathstar(pygame.sprite.Sprite):
 					y = randint(self.ypos, self.ypos + 2 * self.radius)
 				Explosion([x, y], 0)
 			if self.health <= -100:
+				LevelCounter.newblock(1)
 				self.kill()
 				Deathstar.list.remove(self)
 
@@ -907,7 +914,7 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 		explosion.update()
 	for healthbar in HealthBars.list:
 		healthbar.update()
-	if not EnemyShip.list:
+	if not (EnemyShip.list or Deathstar.list):
 		HealthBars.list = [HealthBars.list[0]]
 		warp.update()
 	levelcounter.update()
@@ -956,7 +963,7 @@ class Warp:
 			LevelCounter.radius += self.modifier * 4
 			self.modifier -= 0.006	 # should be half the starting modifier when in 50%
 			self.warptime += 1
-			if self.warptime == 100:
+			if self.warptime == 101:
 				number = 0
 				EnemyShip.difficulty += 1
 				Warp.level += 1
