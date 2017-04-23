@@ -12,6 +12,7 @@ add some sort of storyline/progress (level counter!)
 add sounds
 improve the menu
 gameover display
+levelcounter blocks should fly in
 
 full list of MAYBES:
 powerups
@@ -118,7 +119,7 @@ class Stars:
 
 	def __init__(self):
 		self.starlist = []
-		self.staramount = 150
+		self.staramount = randint(50, 100) + randint(50, 100)
 		for star in range(self.staramount):
 			newstar = self.generatenewstar(1)
 			self.starlist.append(newstar)
@@ -143,7 +144,8 @@ class Stars:
 			newwidth = star[2] + (2 * Stars.speed - 2) * star[3] / 2
 			pygame.draw.rect(gamesurface, star[1], [star[0][0], star[0][1], newwidth, star[2]])
 			star[0][0] -= star[3] * Stars.speed
-			star[1] = (star[1][0], 255 - Stars.speed * 28, 255 - Stars.speed * 28)
+			if Warp.iswarping:
+				star[1] = (star[1][0], 255 - Stars.speed * 28, 255 - Stars.speed * 28)
 			if star[0][0] < -10:
 				newstar = self.generatenewstar(0)
 				self.starlist[index] = newstar
@@ -244,25 +246,47 @@ class LevelCounter:
 	blocks = []
 	rotationspeed = 0.05
 	radius = 50
+	centerx = radius * 2
+	centery = gameheight - radius * 2
 
 	def __init__(self):
-		self.centerx = LevelCounter.radius * 2
-		self.centery = gameheight - LevelCounter.radius * 2
+		pass
 
 	def update(self):
 		for block in LevelCounter.blocks:
-			block[0] = (block[0] + LevelCounter.rotationspeed + block[3]) % (2 * pi)
-			posx = LevelCounter.radius * cos(block[0]) + self.centerx
-			posy = LevelCounter.radius * sin(block[0]) + self.centery
-			blitx, blity = posx - block[1] / 2, posy - block[1] / 2
-			pygame.draw.rect(gamesurface, block[2], [blitx, blity, 10, 10])
+			block.update()
 		pygame.draw.rect(gamesurface, Colors.hb_green, [self.centerx - 5, self.centery - 5, 10, 10])
 
-	def newblock(type):
-		colors = [Colors.red, Colors.deathstar_laser]
-		sizes = [10, 15]
-		blockcolor, blocksize, blockspeed = colors[type], sizes[type], uniform(-0.02, 0.02)
-		LevelCounter.blocks.append([uniform(0, 2 * pi), blocksize, blockcolor, blockspeed])
+	class Block:
+		def __init__(self, type, pos):
+			colors = [Colors.red, Colors.deathstar_laser]
+			sizes = [10, 15]
+			self.xpos, self.ypos = pos[0], pos[1]
+			self.color = colors[type]
+			self.size = sizes[type]
+			self.speed = uniform(-0.02, 0.02 * type)
+			self.angle = 3 * pi / 2 #uniform(0, 2 * pi)
+			self.inorbit = 0
+			self.enterx = LevelCounter.radius * cos(self.angle) + LevelCounter.centerx
+			self.entery = LevelCounter.radius * sin(self.angle) + LevelCounter.centery
+			self.enterspeed = 50
+			self.xspeed = (self.xpos - self.enterx) / self.enterspeed
+			self.yspeed = (self.ypos - self.entery) / self.enterspeed
+			LevelCounter.blocks.append(self)
+
+		def update(self):
+			if self.inorbit:
+				self.angle = (self.angle - LevelCounter.rotationspeed - self.speed) % (2 * pi)
+				self.xpos = LevelCounter.radius * cos(self.angle) + LevelCounter.centerx
+				self.ypos = LevelCounter.radius * sin(self.angle) + LevelCounter.centery
+			else:
+				self.xpos -= self.xspeed
+				self.ypos -= self.yspeed
+				xe, ye = self.enterx, self.entery 	# just to avoid pep 8
+				if xe - 1 < self.xpos < xe + 1 and ye - 1 < self.ypos < ye + 1:
+					self.inorbit = 1
+			blitx, blity = self.xpos - self.size / 2, self.ypos - self.size / 2
+			pygame.draw.rect(gamesurface, self.color, [blitx, blity, 10, 10])
 
 
 class EnemyShip(pygame.sprite.Sprite):
@@ -304,6 +328,8 @@ class EnemyShip(pygame.sprite.Sprite):
 		self.image = self.enemyshipanimation[0]
 		self.mask = pygame.mask.from_surface(self.image)
 		self.ypos = randint(0, gameheight - self.enemyshipanimation[0].get_rect().height)
+		self.centerx = self.xpos + self.image.get_rect().width / 2
+		self.centery = self.ypos + self.image.get_rect().height / 2
 
 	def update(self, mainship):
 		self.xpos += (self.targetx - self.xpos) * 0.03
@@ -332,6 +358,8 @@ class EnemyShip(pygame.sprite.Sprite):
 			self.image = rot_center(self.image, -self.angle)
 		gamesurface.blit(self.image, [self.xpos, self.ypos])
 		self.mask = pygame.mask.from_surface(self.image)
+		self.centerx = self.xpos + self.image.get_rect().width / 2
+		self.centery = self.ypos + self.image.get_rect().height / 2
 
 	def boost(self, up):
 		# changes the boost amount so it'll get moving. Var up makes it go up/down with a value of either 1/0
@@ -384,6 +412,7 @@ class MainShip:
 		self.xpos = gamewidth / 8
 		self.ypos = gameheight / 2
 		self.speed = speed
+		self.slowdown = 1.05    	# the higher, the faster you will come to a stop
 		self.currentspeed = 0
 		self.ismoving = 0
 		self.isrotating = 0
@@ -448,7 +477,7 @@ class MainShip:
 			if self.justcrashed != 0:
 				# this will make your justcrashed variable revert to 0 every two updates.
 				self.justcrashed -= 0.5
-			self.currentspeed = self.currentspeed / 1.05 * (self.currentspeed > 0.2 or self.currentspeed < -0.2)
+			self.currentspeed = self.currentspeed / self.slowdown * (self.currentspeed > 0.2 or self.currentspeed < -0.2)
 			# same as with enemyship. Lower the speed decreasingly, until it's so low it's not worth calculating anymore
 		self.cooldown += 1 * (self.cooldown < 10)
 		if self.isshooting == 0 or (self.bullets == 0 and self.isshooting != 0):
@@ -809,7 +838,7 @@ class Deathstar(pygame.sprite.Sprite):
 					y = randint(self.ypos, self.ypos + 2 * self.radius)
 				Explosion([x, y], 0)
 			if self.health <= -100:
-				LevelCounter.newblock(1)
+				LevelCounter.Block(1, [self.centerx, self.centery])
 				self.kill()
 				Deathstar.list.remove(self)
 
@@ -900,7 +929,7 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 		mainship.update()
 	for enemyship in EnemyShip.list:
 		if enemyship.isdead == 1:
-			LevelCounter.newblock(0)
+			LevelCounter.Block(0, [enemyship.centerx, enemyship.centery])
 			EnemyShip.list.remove(enemyship)
 		else:
 			enemyship.update(mainship)
@@ -916,6 +945,7 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 		healthbar.update()
 	if not (EnemyShip.list or Deathstar.list):
 		HealthBars.list = [HealthBars.list[0]]
+		Warp.iswarping = 1
 		warp.update()
 	levelcounter.update()
 	pygame.display.update()
@@ -950,6 +980,7 @@ class Warp:
 	# totally not stolen from Warblade
 
 	level = 0
+	iswarping = 0
 
 	def __init__(self):
 		self.modifier = 0.3
@@ -964,6 +995,7 @@ class Warp:
 			self.modifier -= 0.006	 # should be half the starting modifier when in 50%
 			self.warptime += 1
 			if self.warptime == 101:
+				Warp.iswarping = 0
 				number = 0
 				EnemyShip.difficulty += 1
 				Warp.level += 1
@@ -1004,7 +1036,7 @@ def gameloop():
 	HealthBars.list = [healthbarmain]
 	for i in range(1):
 		newenemy(i)
-	mainship = MainShip(healthbarmain.currenthp, 0.3, 200, healthbarmain)
+	mainship = MainShip(healthbarmain.currenthp, 0.35, 200, healthbarmain)
 	# ds = Deathstar([800, 600], 300)
 	stars = Stars()
 	event = Event(2000)
