@@ -10,9 +10,9 @@ deathstar spawn in animation
 add more EXPLOSIONS!! to hide the bugs
 add some sort of storyline/progress (level counter!)
 add sounds
+soundtrack should loop
 improve the menu
-gameover display
-levelcounter blocks should fly in
+game-over display
 
 full list of MAYBES:
 powerups
@@ -27,7 +27,7 @@ import pygame
 from random import randint, uniform
 import os
 from huh import rot_center, playsound, animate, getpercentages
-from math import sin, cos, radians, degrees, atan, pi
+from math import sin, cos, radians, degrees, atan, pi, sqrt
 
 gamewidth = 1280
 gameheight = 800
@@ -265,25 +265,37 @@ class LevelCounter:
 			self.color = colors[type]
 			self.size = sizes[type]
 			self.speed = uniform(-0.02, 0.02 * type)
-			self.angle = 3 * pi / 2 #uniform(0, 2 * pi)
+			self.angle = 3 * pi / 2
 			self.inorbit = 0
 			self.enterx = LevelCounter.radius * cos(self.angle) + LevelCounter.centerx
 			self.entery = LevelCounter.radius * sin(self.angle) + LevelCounter.centery
 			self.enterspeed = 50
 			self.xspeed = (self.xpos - self.enterx) / self.enterspeed
 			self.yspeed = (self.ypos - self.entery) / self.enterspeed
+			self.anglespeed = LevelCounter.rotationspeed - self.speed
+			self.arrivespeed = 0										# just... don't question these
+			self.truespeed = self.anglespeed
 			LevelCounter.blocks.append(self)
 
 		def update(self):
 			if self.inorbit:
-				self.angle = (self.angle - LevelCounter.rotationspeed - self.speed) % (2 * pi)
+				self.anglespeed = LevelCounter.rotationspeed - self.speed
+				self.angle = (self.angle - self.truespeed) % (2 * pi)
 				self.xpos = LevelCounter.radius * cos(self.angle) + LevelCounter.centerx
 				self.ypos = LevelCounter.radius * sin(self.angle) + LevelCounter.centery
+				self.truespeed += (self.anglespeed - self.truespeed) * 0.01
 			else:
+				self.enterx = LevelCounter.radius * cos(self.angle) + LevelCounter.centerx
+				self.entery = LevelCounter.radius * sin(self.angle) + LevelCounter.centery
+				self.xspeed = (self.xpos - self.enterx) / self.enterspeed
+				self.yspeed = (self.ypos - self.entery) / self.enterspeed
+				self.arrivespeed = sqrt(self.xspeed**2 + self.yspeed**2)
+				self.enterspeed -= 1
 				self.xpos -= self.xspeed
 				self.ypos -= self.yspeed
 				xe, ye = self.enterx, self.entery 	# just to avoid pep 8
-				if xe - 1 < self.xpos < xe + 1 and ye - 1 < self.ypos < ye + 1:
+				if xe - 0.1 < self.xpos < xe + 0.1 and ye - 0.1 < self.ypos < ye + 0.1:
+					self.truespeed = self.arrivespeed / LevelCounter.radius
 					self.inorbit = 1
 			blitx, blity = self.xpos - self.size / 2, self.ypos - self.size / 2
 			pygame.draw.rect(gamesurface, self.color, [blitx, blity, 10, 10])
