@@ -984,7 +984,7 @@ def countdown(mainship, stars, event, warp, levelcounter):
 			gamesurface.blit(startview, [0, 0])
 			gamesurface.blit(image, [xpos, ypos])
 			pygame.display.update()
-			clock.tick(60)
+			clock.tick(fps)
 	os.remove('startview.jpg')
 
 
