@@ -12,9 +12,9 @@ add some sort of storyline/progress (level counter!)
 add sounds
 soundtrack should loop
 improve the menu
-game-over display
 
 full list of MAYBES:
+improve game over display
 powerups
 fuel concept
 shield for the player
@@ -38,6 +38,8 @@ gamesurface = pygame.display.set_mode([gamewidth, gameheight])
 pygame.display.set_caption('Spacelight Alpha')
 clock = pygame.time.Clock()
 soundmixer = pygame.mixer.init()
+bigfont = pygame.font.Font('9bit.TTF', 140)
+okfont = pygame.font.Font('9bit.TTF', 80)
 
 
 class Menu:
@@ -77,6 +79,9 @@ class Menu:
 		pygame.draw.rect(gamesurface, Colors.menu_background, [a + 17, b + 17, c - 34, d - 34])
 		for i, button in enumerate(self.buttonlist):
 			self.sbpos = gamesurface.blit(button, [c - self.buttonsizelist[i][0], d - self.buttonsizelist[i][1]])
+		textwidth = bigfont.size("Spacelight")[0]
+		header = bigfont.render("Spacelight", 1, Colors.black, Colors.menu_background)
+		gamesurface.blit(header, (gamewidth / 2 - textwidth / 2, b + 40))
 
 	def getinput(self):
 		for event in pygame.event.get():
@@ -244,6 +249,7 @@ class LevelCounter:
 	# [angle, size, color, speed]
 
 	blocks = []
+	score = 0
 	rotationspeed = 0.05
 	radius = 50
 	centerx = radius * 2
@@ -276,6 +282,7 @@ class LevelCounter:
 			self.arrivespeed = 0										# just... don't question these
 			self.truespeed = self.anglespeed
 			LevelCounter.blocks.append(self)
+			LevelCounter.score += (type + 1)
 
 		def update(self):
 			if self.inorbit:
@@ -939,6 +946,8 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 		deathstar.update([[mainship], Meteorite.list])
 	if mainship.isdead == 0:
 		mainship.update()
+	else:
+		gameover()
 	for enemyship in EnemyShip.list:
 		if enemyship.isdead == 1:
 			LevelCounter.Block(0, [enemyship.centerx, enemyship.centery])
@@ -986,6 +995,35 @@ def countdown(mainship, stars, event, warp, levelcounter):
 			pygame.display.update()
 			clock.tick(fps)
 	os.remove('startview.jpg')
+
+
+def gameover():
+	game_exit = 0
+	pygame.image.save(gamesurface, 'endview.jpg')
+	endview = pygame.image.load('endview.jpg')
+	while game_exit == 0:
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				game_exit = 1
+		gamesurface.blit(endview, [0, 0])
+		a = gamewidth / 10
+		b = gameheight / 10
+		c = gamewidth - a * 2
+		d = gameheight - b * 2
+		pygame.draw.rect(gamesurface, Colors.black, [a, b, c, d], 10)
+		pygame.draw.rect(gamesurface, Colors.white, [a + 6, b + 6, c - 12, d - 12], 10)
+		pygame.draw.rect(gamesurface, Colors.black, [a + 12, b + 12, c - 24, d - 24], 5)
+		pygame.draw.rect(gamesurface, Colors.menu_background, [a + 17, b + 17, c - 34, d - 34])
+		textwidth = bigfont.size("GAME  OVER")[0]
+		header = bigfont.render("GAME  OVER", 1, Colors.black)
+		gamesurface.blit(header, [gamewidth / 2 - textwidth / 2, b + 60])
+		textwidth = okfont.size("Score:  " + str(LevelCounter.score))[0]
+		score = okfont.render("Score:  " + str(LevelCounter.score), 1, Colors.black)
+		gamesurface.blit(score, [gamewidth / 2 - textwidth / 2, gameheight / 2])
+		pygame.display.update()
+	os.remove('endview.jpg')
+	pygame.quit()
+	quit()
 
 
 class Warp:
@@ -1061,6 +1099,10 @@ def gameloop():
 		drawstuff(mainship, stars, event, warp, levelcounter)
 		clock.tick(fps)
 		loop += 1
+	try:
+		os.remove('endview.jpg')
+	except FileNotFoundError:
+		pass
 	pygame.quit()
 	quit()
 
