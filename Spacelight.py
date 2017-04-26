@@ -34,18 +34,19 @@ gamewidth = 1280
 gameheight = 800
 fps = 60
 
+pygame.mixer.pre_init(44100)
 x = pygame.init()
 gamesurface = pygame.display.set_mode([gamewidth, gameheight])
 pygame.display.set_caption('Spacelight Alpha')
 clock = pygame.time.Clock()
-soundmixer = pygame.mixer.init()
+pygame.mixer.init()
 bigfont = pygame.font.Font('9bit.TTF', 140)
 okfont = pygame.font.Font('9bit.TTF', 80)
 
 
 class Menu:
 	def __init__(self):
-		playsound(0, "soundtrack.wav")
+		playsound("soundtrack.wav", 1)
 		self.inmenu = 1
 		self.hoverover = [0]
 		self.sb = pygame.image.load('button0d.png')
@@ -93,7 +94,7 @@ class Menu:
 				if button.collidepoint(x, y):
 					if event.type == pygame.MOUSEBUTTONDOWN:
 						if index == 0:
-							playsound(0, 'menu.ogg')
+							playsound('menu.ogg', Sound.effectvolume)
 							return
 					else:
 						self.hoverover[index] = 1
@@ -114,6 +115,10 @@ class Colors:
 	menu_background = (189, 188, 246)
 	deathstar_laser = (70, 250, 2)
 	enemyship_red = (70, 20, 20)
+
+
+class Sound:
+	effectvolume = 0.3
 
 
 class Stars:
@@ -405,6 +410,7 @@ class EnemyShip(pygame.sprite.Sprite):
 		self.angle += (self.rotatingtarget - self.angle) * self.rotatespeed
 
 	def shoot(self):
+		playsound("soundeffects/laser2.wav", Sound.effectvolume)
 		laser = Shoot(self.xpos, self.ypos, -1, -self.angle)
 		laser2 = Shoot(self.xpos, self.ypos, -1, -self.angle)
 		Shoot.laserlist.append(laser)
@@ -456,6 +462,7 @@ class MainShip:
 			self.isdead = 1
 
 	def shoot(self):
+		playsound('soundeffects\laser1.wav', Sound.effectvolume)
 		laser = Shoot(self.xpos, self.ypos, 1, self.angle)
 		Shoot.laserlist.append(laser)
 
