@@ -5,21 +5,19 @@ also, note to self: if you use init it's only for that instance, accessable with
 otherwise, you can use it from anywhere.
 
 full list of TODOs:
-make the deathstar flash on hit, perhaps show health
-deathstar spawn in animation
-add more EXPLOSIONS!! to hide the bugs
-add some sort of storyline/progress (level counter!)
-add sounds
-soundtrack should loop
-improve the menu
+deathstar improvements?
+add warp sound
+improve the menu (credits!)
 
 
 full list of MAYBES:
+combo streak
+highscores
 improve game over display
 powerups
 fuel concept
 shield for the player
-nerf deathstar damage a bit/make it a more lategame enemy
+new enemy by luc
 warning sign for meteorites
 bingo active sign
 """
@@ -46,7 +44,8 @@ okfont = pygame.font.Font('9bit.TTF', 80)
 
 class Menu:
 	def __init__(self):
-		playsound("soundtrack.wav", 1)
+		pygame.mixer.music.load('soundtrack.wav')
+		pygame.mixer.music.play(-1)
 		self.inmenu = 1
 		self.hoverover = [0]
 		self.sb = pygame.image.load('button0d.png')
@@ -877,6 +876,7 @@ class Explosion(pygame.sprite.Sprite):
 
 	def __init__(self, centerpos, size):
 		pygame.sprite.Sprite.__init__(self)
+		playsound('soundeffects\\explosion' + str(size) + '.wav', Sound.effectvolume)
 		Explosion.list.append(self)
 		self.centerx, self.centery = centerpos[0], centerpos[1]
 		self.animation = animate('explosions\\' + str(size))
