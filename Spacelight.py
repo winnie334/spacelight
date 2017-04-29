@@ -287,7 +287,7 @@ class LevelCounter:
 			self.arrivespeed = 0										# just... don't question these
 			self.truespeed = self.anglespeed
 			LevelCounter.blocks.append(self)
-			LevelCounter.score += (type + 1)
+			LevelCounter.score += (2 * type + 1)
 
 		def update(self):
 			if self.inorbit:
@@ -351,9 +351,10 @@ class EnemyShip(pygame.sprite.Sprite):
 			self.enemyshipanimation.append(frame)
 		self.image = self.enemyshipanimation[0]
 		self.mask = pygame.mask.from_surface(self.image)
-		self.ypos = randint(0, gameheight - self.enemyshipanimation[0].get_rect().height)
-		self.centerx = self.xpos + self.image.get_rect().width / 2
-		self.centery = self.ypos + self.image.get_rect().height / 2
+		self.width, self.height = self.image.get_rect().width, self.image.get_rect().height
+		self.ypos = randint(0, gameheight - self.height)
+		self.centerx = self.xpos + self.width / 2
+		self.centery = self.ypos + self.height / 2
 
 	def update(self, mainship):
 		self.xpos += (self.targetx - self.xpos) * 0.03
@@ -382,8 +383,8 @@ class EnemyShip(pygame.sprite.Sprite):
 			self.image = rot_center(self.image, -self.angle)
 		gamesurface.blit(self.image, [self.xpos, self.ypos])
 		self.mask = pygame.mask.from_surface(self.image)
-		self.centerx = self.xpos + self.image.get_rect().width / 2
-		self.centery = self.ypos + self.image.get_rect().height / 2
+		self.centerx = self.xpos + self.width / 2
+		self.centery = self.ypos + self.height / 2
 
 	def boost(self, up):
 		# changes the boost amount so it'll get moving. Var up makes it go up/down with a value of either 1/0
@@ -421,6 +422,10 @@ class EnemyShip(pygame.sprite.Sprite):
 		if self.healthbar.currenthp == -10:
 			print('enemy down')
 			self.isdead = 1
+			for _ in range(Event.combo * (Event.combo >= 2) + (Event.combo < 2)):
+				blockxpos = randint(round(self.xpos, 0), round(self.xpos + self.width, 0))
+				blockypos = randint(round(self.ypos, 0), round(self.ypos + self.height, 0))
+				LevelCounter.Block(0, [blockxpos, blockypos])
 
 
 class MainShip:
@@ -589,6 +594,8 @@ class Shoot(pygame.sprite.Sprite):
 					if enemyship.mask.get_at((int(self.xpos - enemyship.xpos), int(self.ypos - enemyship.ypos))):
 						enemyship.takedamage(1)
 						self.hit()
+						Event.combo += 1
+						Event.justhit = 80
 						return
 				except IndexError:
 					pass
@@ -596,6 +603,8 @@ class Shoot(pygame.sprite.Sprite):
 				if (self.xpos - deathstar.centerx)**2 + (self.ypos - deathstar.centery)**2 <= deathstar.radius**2:
 					deathstar.takedamage(1)
 					self.hit()
+					Event.combo += 1
+					Event.justhit = 65
 		if self.isityou == -1:
 			try:
 				if mainship.mask.get_at((int(self.xpos - mainship.xpos), int(self.ypos - mainship.ypos))):
@@ -901,6 +910,11 @@ class Explosion(pygame.sprite.Sprite):
 
 
 class Event:
+	# uhh
+
+	combo = 0
+	justhit = 0
+
 	def __init__(self, chaoslevel):
 		self.timenoevent = 0
 		self.chaos = chaoslevel
@@ -914,6 +928,16 @@ class Event:
 
 	def new(self):
 		Meteorite()
+
+	def docombostuff(self):
+		Event.justhit -= (Event.justhit > 0)
+		if Event.combo > 2:
+			textsize = okfont.size("Combo! " + str(Event.combo) + "x")
+			color = (255, 150 - 10 * Event.combo * (Event.combo <= 14) - 150 * (Event.combo > 14), 20)
+			text = okfont.render("Combo! " + str(Event.combo) + "x", 1, color)
+			gamesurface.blit(text, [gamewidth - 1.2 * textsize[0], gameheight - 1.5 * textsize[1]])
+		if Event.justhit == 0:
+			Event.combo = 0
 
 
 def getinput(mainship):
@@ -958,7 +982,6 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 		gameover()
 	for enemyship in EnemyShip.list:
 		if enemyship.isdead == 1:
-			LevelCounter.Block(0, [enemyship.centerx, enemyship.centery])
 			EnemyShip.list.remove(enemyship)
 		else:
 			enemyship.update(mainship)
@@ -972,6 +995,7 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 		explosion.update()
 	for healthbar in HealthBars.list:
 		healthbar.update()
+	event.docombostuff()
 	if not (EnemyShip.list or Deathstar.list):
 		HealthBars.list = [HealthBars.list[0]]
 		Warp.iswarping = 1
