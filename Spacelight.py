@@ -8,10 +8,12 @@ full list of TODOs:
 deathstar improvements?
 add warp sound
 improve the menu (credits!)
+also add letter by letter text
+restart button
 
 
 full list of MAYBES:
-combo streak
+combo streak -- holy shit why was this ever in MAYBE? This is awesome!!
 highscores
 improve game over display
 powerups
@@ -604,7 +606,7 @@ class Shoot(pygame.sprite.Sprite):
 					deathstar.takedamage(1)
 					self.hit()
 					Event.combo += 1
-					Event.justhit = 65
+					Event.justhit = 80
 		if self.isityou == -1:
 			try:
 				if mainship.mask.get_at((int(self.xpos - mainship.xpos), int(self.ypos - mainship.ypos))):
