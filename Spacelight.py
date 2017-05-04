@@ -49,13 +49,16 @@ class Menu:
 		pygame.mixer.music.load('soundtrack.wav')
 		pygame.mixer.music.play(-1)
 		self.inmenu = 1
-		self.hoverover = [0]
+		self.incredits = 0
+		self.hoverover = [0, 0]
 		self.sb = pygame.image.load('button0d.png')
 		self.sbsize = self.sb.get_rect().size
-		self.buttonlist = [self.sb]
-		self.buttonsizelist = [self.sbsize]
+		self.cred = pygame.image.load('button1d.png')
+		self.credsize = self.cred.get_rect().size
+		self.buttonlist = [self.sb, self.cred]
+		self.buttonsizelist = [self.sbsize, self.credsize]
 		self.draw()
-		self.buttonposlist = [self.sbpos]
+		self.buttonposlist = [self.sbpos, self.credpos]
 		while self.inmenu == 1:
 			self.inmenu = self.getinput()
 			self.draw()
@@ -80,8 +83,8 @@ class Menu:
 		pygame.draw.rect(gamesurface, Colors.white, [a + 6, b + 6, c - 12, d - 12], 10)
 		pygame.draw.rect(gamesurface, Colors.black, [a + 12, b + 12, c - 24, d - 24], 5)
 		pygame.draw.rect(gamesurface, Colors.menu_background, [a + 17, b + 17, c - 34, d - 34])
-		for i, button in enumerate(self.buttonlist):
-			self.sbpos = gamesurface.blit(button, [c - self.buttonsizelist[i][0], d - self.buttonsizelist[i][1]])
+		self.sbpos = gamesurface.blit(self.buttonlist[0], [c - 250, d - 100])
+		self.credpos = gamesurface.blit(self.buttonlist[1], [a + 80, d - 100])
 		textwidth = bigfont.size("Spacelight")[0]
 		header = bigfont.render("Spacelight", 1, Colors.black, Colors.menu_background)
 		gamesurface.blit(header, (gamewidth / 2 - textwidth / 2, b + 40))
@@ -94,13 +97,15 @@ class Menu:
 			for index, button in enumerate(self.buttonposlist):
 				if button.collidepoint(x, y):
 					if event.type == pygame.MOUSEBUTTONDOWN:
+						playsound('menu.ogg', Sound.effectvolume)
 						if index == 0:
-							playsound('menu.ogg', Sound.effectvolume)
 							return
+						if index == 1:
+							self.incredits = 1
 					else:
 						self.hoverover[index] = 1
 				else:
-					self.hoverover = [0 for _ in self.hoverover]
+					self.hoverover[index] = 0
 		return True
 
 
