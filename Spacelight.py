@@ -42,89 +42,7 @@ clock = pygame.time.Clock()
 pygame.mixer.init()
 bigfont = pygame.font.Font('9bit.TTF', 140)
 okfont = pygame.font.Font('9bit.TTF', 80)
-
-
-class Menu:
-	def __init__(self):
-		pygame.mixer.music.load('soundtrack.wav')
-		pygame.mixer.music.play(-1)
-		self.inmenu = 1
-		self.incredits = 0
-		self.hoverover = [0, 0]
-		self.sb = pygame.image.load('button0d.png')
-		self.sbsize = self.sb.get_rect().size
-		self.cred = pygame.image.load('button1d.png')
-		self.credsize = self.cred.get_rect().size
-		self.buttonlist = [self.sb, self.cred]
-		self.buttonsizelist = [self.sbsize, self.credsize]
-		self.draw()
-		self.buttonposlist = [self.sbpos, self.credpos]
-		while self.inmenu == 1:
-			self.inmenu = self.getinput()
-			self.draw()
-			pygame.display.update()
-			clock.tick(60)
-		if self.inmenu == 2:
-			pygame.quit()
-			quit()
-
-	def draw(self):
-		for i, value in enumerate(self.hoverover):
-			if value == 1:
-				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'a.png')
-			if value == 0:
-				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'd.png')
-		a = gamewidth / 10
-		b = gameheight / 10
-		c = gamewidth - a * 2
-		d = gameheight - b * 2
-		gamesurface.fill(Colors.space)
-		pygame.draw.rect(gamesurface, Colors.black, [a, b, c, d], 10)
-		pygame.draw.rect(gamesurface, Colors.white, [a + 6, b + 6, c - 12, d - 12], 10)
-		pygame.draw.rect(gamesurface, Colors.black, [a + 12, b + 12, c - 24, d - 24], 5)
-		pygame.draw.rect(gamesurface, Colors.menu_background, [a + 17, b + 17, c - 34, d - 34])
-		self.sbpos = gamesurface.blit(self.buttonlist[0], [c - 250, d - 100])
-		self.credpos = gamesurface.blit(self.buttonlist[1], [a + 80, d - 100])
-		textwidth = bigfont.size("Spacelight")[0]
-		header = bigfont.render("Spacelight", 1, Colors.black, Colors.menu_background)
-		gamesurface.blit(header, (gamewidth / 2 - textwidth / 2, b + 40))
-
-	def getinput(self):
-		for event in pygame.event.get():
-			if event.type == pygame.QUIT:
-				return 2
-			x, y = pygame.mouse.get_pos()
-			for index, button in enumerate(self.buttonposlist):
-				if button.collidepoint(x, y):
-					if event.type == pygame.MOUSEBUTTONDOWN:
-						playsound('menu.ogg', Sound.effectvolume)
-						if index == 0:
-							return
-						if index == 1:
-							self.incredits = 1
-					else:
-						self.hoverover[index] = 1
-				else:
-					self.hoverover[index] = 0
-		return True
-
-
-class Colors:
-	# here we keep all the colors we're going to use in the game
-	space = (20, 20, 40)
-	red = (255, 0, 0)
-	black = (0, 0, 0)
-	white = (255, 255, 255)
-	hb_background = (250, 200, 100)
-	hb_green = (50, 200, 10)
-	hb_red = (253, 44, 38)
-	menu_background = (189, 188, 246)
-	deathstar_laser = (70, 250, 2)
-	enemyship_red = (70, 20, 20)
-
-
-class Sound:
-	effectvolume = 0.3
+smallfont = pygame.font.Font('9bit.TTF', 40)
 
 
 class Stars:
@@ -166,6 +84,129 @@ class Stars:
 			if star[0][0] < -10:
 				newstar = self.generatenewstar(0)
 				self.starlist[index] = newstar
+
+
+class Menu:
+	stars = Stars()
+
+	def __init__(self):
+		self.credlist = self.getcreds()
+		pygame.mixer.music.load('soundtrack.wav')
+		pygame.mixer.music.play(-1)
+		self.inmenu = 1
+		self.incredits = 0
+		self.hoverover = [0, 0]
+		self.sb = pygame.image.load('button0d.png')
+		self.sbsize = self.sb.get_rect().size
+		self.cred = pygame.image.load('button1d.png')
+		self.credsize = self.cred.get_rect().size
+		self.buttonlist = [self.sb, self.cred]
+		self.buttonsizelist = [self.sbsize, self.credsize]
+		self.drawmenu()
+		self.buttonposlist = [self.sbpos, self.credpos]
+		while self.inmenu == 1:
+			self.inmenu = self.getinput()
+			self.drawbackground()
+			if self.incredits:
+				self.drawcreds()
+			else:
+				self.drawmenu()
+			pygame.display.update()
+			clock.tick(60)
+		if self.inmenu == 2:
+			pygame.quit()
+			quit()
+
+	def drawmenu(self):
+		for i, value in enumerate(self.hoverover):
+			if value == 1:
+				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'a.png')
+			if value == 0:
+				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'd.png')
+		a = gamewidth / 10
+		b = gameheight / 10
+		c = gamewidth - a * 2
+		d = gameheight - b * 2
+		self.sbpos = gamesurface.blit(self.buttonlist[0], [c - 250, d - 100])
+		self.credpos = gamesurface.blit(self.buttonlist[1], [a + 80, d - 100])
+		textwidth = bigfont.size("Spacelight")[0]
+		header = bigfont.render("Spacelight", 1, Colors.black, Colors.menu_background)
+		gamesurface.blit(header, (gamewidth / 2 - textwidth / 2, b + 40))
+
+	def drawbackground(self):
+		a = gamewidth / 10
+		b = gameheight / 10
+		c = gamewidth - a * 2
+		d = gameheight - b * 2
+		gamesurface.fill(Colors.space)
+		Menu.stars.drawstars()
+		pygame.draw.rect(gamesurface, Colors.black, [a, b, c, d])
+		pygame.draw.rect(gamesurface, Colors.black, [a, b, c, d], 10)
+		pygame.draw.rect(gamesurface, Colors.white, [a + 6, b + 6, c - 12, d - 12], 10)
+		pygame.draw.rect(gamesurface, Colors.black, [a + 12, b + 12, c - 24, d - 24], 5)
+		pygame.draw.rect(gamesurface, Colors.menu_background, [a + 17, b + 17, c - 34, d - 34])
+
+	def getinput(self):
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				return 2
+			x, y = pygame.mouse.get_pos()
+			for index, button in enumerate(self.buttonposlist):
+				if button.collidepoint(x, y):
+					if event.type == pygame.MOUSEBUTTONDOWN:
+						playsound('menu.ogg', Sound.effectvolume)
+						if index == 0:
+							return
+						if index == 1:
+							self.incredits = 1
+					else:
+						self.hoverover[index] = 1
+				else:
+					self.hoverover[index] = 0
+		return True
+
+	def drawcreds(self):
+		a = gamewidth / 10
+		b = gameheight / 10
+		c = gamewidth - a * 2
+		d = gameheight - b * 2
+		header = bigfont.render("Credits", 1, Colors.black)
+		gamesurface.blit(header, (c - 500, b + 10))
+		for i in range(len(self.credlist)):
+			gamesurface.blit(self.credlist[i], (a + 30, b + 65 + 30 * i))
+
+	def getcreds(self):
+		lines = open('credits.txt', 'r').read().splitlines()
+		textobjects = []
+		for line in lines:
+			if line == '':
+				textobj = okfont.render('', 1, Colors.black, Colors.menu_background)
+				textobjects.append(textobj)
+			elif line[0] == '#':
+				textobj = okfont.render(line[1:], 1, Colors.black, Colors.menu_background)
+				textobjects.append(textobj)
+			elif line[0] == '-':
+				textobj = smallfont.render(line[1:], 1, Colors.white, Colors.menu_background)
+				textobjects.append(textobj)
+		return textobjects
+
+
+class Colors:
+	# here we keep all the colors we're going to use in the game
+	space = (20, 20, 40)
+	red = (255, 0, 0)
+	black = (0, 0, 0)
+	white = (255, 255, 255)
+	hb_background = (250, 200, 100)
+	hb_green = (50, 200, 10)
+	hb_red = (253, 44, 38)
+	menu_background = (189, 188, 246)
+	deathstar_laser = (70, 250, 2)
+	enemyship_red = (70, 20, 20)
+
+
+class Sound:
+	effectvolume = 0.3
 
 
 class HealthBars:

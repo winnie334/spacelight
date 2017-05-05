@@ -1,0 +1,19 @@
+Use # to make it a title, use - to make it normal font. Typing normal text (like this) will get ignored.
+empty lines will have an effect.
+#ART:
+
+-Winand Appels
+-Louis Gordts
+-Florian Aerts
+-Luc Pattyn
+
+#SOUND:
+
+-Nina Appels
+-Parijat Mishra
+-Bubaproducer
+-Partners In Rhyme
+
+#PLAYTESTERS:
+
+-Practically everyone I know
