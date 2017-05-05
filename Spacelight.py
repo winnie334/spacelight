@@ -7,9 +7,8 @@ otherwise, you can use it from anywhere.
 full list of TODOs:
 deathstar improvements?
 add warp sound
-improve the menu (credits!)
-also add letter by letter text
-restart button
+make it exe
+add luc logo
 
 
 full list of MAYBES:
@@ -95,15 +94,18 @@ class Menu:
 		pygame.mixer.music.play(-1)
 		self.inmenu = 1
 		self.incredits = 0
-		self.hoverover = [0, 0]
+		self.hoverover = [0, 0, 0]
 		self.sb = pygame.image.load('button0d.png')
 		self.sbsize = self.sb.get_rect().size
 		self.cred = pygame.image.load('button1d.png')
 		self.credsize = self.cred.get_rect().size
-		self.buttonlist = [self.sb, self.cred]
-		self.buttonsizelist = [self.sbsize, self.credsize]
+		self.rb = pygame.image.load('button2d.png')
+		self.rbsize = self.rb.get_rect().size
+		self.buttonlist = [self.sb, self.cred, self.rb]
+		self.buttonsizelist = [self.sbsize, self.credsize, self.rbsize]
+		self.drawcreds()
 		self.drawmenu()
-		self.buttonposlist = [self.sbpos, self.credpos]
+		self.buttonposlist = [self.sbpos, self.credpos, self.rbpos]
 		while self.inmenu == 1:
 			self.inmenu = self.getinput()
 			self.drawbackground()
@@ -118,11 +120,6 @@ class Menu:
 			quit()
 
 	def drawmenu(self):
-		for i, value in enumerate(self.hoverover):
-			if value == 1:
-				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'a.png')
-			if value == 0:
-				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'd.png')
 		a = gamewidth / 10
 		b = gameheight / 10
 		c = gamewidth - a * 2
@@ -134,6 +131,11 @@ class Menu:
 		gamesurface.blit(header, (gamewidth / 2 - textwidth / 2, b + 40))
 
 	def drawbackground(self):
+		for i, value in enumerate(self.hoverover):
+			if value == 1:
+				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'a.png')
+			if value == 0:
+				self.buttonlist[i] = pygame.image.load('button' + str(i) + 'd.png')
 		a = gamewidth / 10
 		b = gameheight / 10
 		c = gamewidth - a * 2
@@ -150,15 +152,21 @@ class Menu:
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				return 2
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_RETURN:
+					playsound('menu.ogg', Sound.effectvolume)
+					return
 			x, y = pygame.mouse.get_pos()
 			for index, button in enumerate(self.buttonposlist):
 				if button.collidepoint(x, y):
 					if event.type == pygame.MOUSEBUTTONDOWN:
 						playsound('menu.ogg', Sound.effectvolume)
-						if index == 0:
+						if index == 0 and self.incredits == 0:
 							return
 						if index == 1:
 							self.incredits = 1
+						if index == 2:
+							self.incredits = 0
 					else:
 						self.hoverover[index] = 1
 				else:
@@ -174,6 +182,7 @@ class Menu:
 		gamesurface.blit(header, (c - 500, b + 10))
 		for i in range(len(self.credlist)):
 			gamesurface.blit(self.credlist[i], (a + 30, b + 65 + 30 * i))
+		self.rbpos = gamesurface.blit(self.buttonlist[2], [c - 70, d - 105])
 
 	def getcreds(self):
 		lines = open('credits.txt', 'r').read().splitlines()
@@ -468,7 +477,6 @@ class EnemyShip(pygame.sprite.Sprite):
 		self.healthbar.damage(self.health, dmg)
 		self.health -= dmg
 		if self.healthbar.currenthp == -10:
-			print('enemy down')
 			self.isdead = 1
 			for _ in range(Event.combo * (Event.combo >= 2) + (Event.combo < 2)):
 				blockxpos = randint(round(self.xpos, 0), round(self.xpos + self.width, 0))
@@ -510,7 +518,6 @@ class MainShip:
 		self.healthbar.damage(self.health, dmg)
 		self.health -= dmg
 		if self.healthbar.currenthp == -10:
-			print('ooh no im dead')
 			self.isdead = 1
 
 	def shoot(self):
@@ -1027,14 +1034,16 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 	if mainship.isdead == 0:
 		mainship.update()
 	else:
-		gameover()
+		restart = gameover()
+		if restart == 1:
+			return 1
+	for laser in Shoot.laserlist:
+		laser.update(mainship)
 	for enemyship in EnemyShip.list:
 		if enemyship.isdead == 1:
 			EnemyShip.list.remove(enemyship)
 		else:
 			enemyship.update(mainship)
-	for laser in Shoot.laserlist:
-		laser.update(mainship)
 	for meteorite in Meteorite.list:
 		meteorite.update(mainship)
 	for deathstar in Deathstar.list:
@@ -1050,6 +1059,7 @@ def drawstuff(mainship, stars, event, warp, levelcounter):
 		warp.update()
 	levelcounter.update()
 	pygame.display.update()
+	return 0
 
 
 def countdown(mainship, stars, event, warp, levelcounter):
@@ -1078,18 +1088,42 @@ def countdown(mainship, stars, event, warp, levelcounter):
 
 
 def gameover():
+	hoverover = 0
+
+	def checkblocks(button):
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				return 1
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_RETURN:
+					playsound('menu.ogg', Sound.effectvolume)
+					return 0 		# restart the game
+			x, y = pygame.mouse.get_pos()
+			if button.collidepoint(x, y):
+				if event.type == pygame.MOUSEBUTTONDOWN:
+					playsound('menu.ogg', Sound.effectvolume)
+					return 0		# restart the game
+				else:
+					return 3 		# hoverover = 1
+			else:
+				return 4			# hoverover = 0
 	game_exit = 0
+	a = gamewidth / 10
+	b = gameheight / 10
+	c = gamewidth - a * 2
+	d = gameheight - b * 2
+	buttonimg = pygame.image.load('button2d.png')
+	button = gamesurface.blit(buttonimg, [c - 250, d - 100])
 	pygame.image.save(gamesurface, 'endview.jpg')
 	endview = pygame.image.load('endview.jpg')
 	while game_exit == 0:
-		for event in pygame.event.get():
-			if event.type == pygame.QUIT:
-				game_exit = 1
+		input = checkblocks(button)
+		if input == 0 or input == 1:
+			game_exit = 1
+		if input == 3 or input == 4:
+			hoverover = 1 if input == 3 else 0
 		gamesurface.blit(endview, [0, 0])
-		a = gamewidth / 10
-		b = gameheight / 10
-		c = gamewidth - a * 2
-		d = gameheight - b * 2
+		pygame.draw.rect(gamesurface, Colors.black, [a, b, c, d])
 		pygame.draw.rect(gamesurface, Colors.black, [a, b, c, d], 10)
 		pygame.draw.rect(gamesurface, Colors.white, [a + 6, b + 6, c - 12, d - 12], 10)
 		pygame.draw.rect(gamesurface, Colors.black, [a + 12, b + 12, c - 24, d - 24], 5)
@@ -1100,10 +1134,16 @@ def gameover():
 		textwidth = okfont.size("Score:  " + str(LevelCounter.score))[0]
 		score = okfont.render("Score:  " + str(LevelCounter.score), 1, Colors.black)
 		gamesurface.blit(score, [gamewidth / 2 - textwidth / 2, gameheight / 2])
+		active = 'd' if hoverover == 0 else 'a'
+		buttonimg = pygame.image.load('button2' + active + '.png')
+		button = gamesurface.blit(buttonimg, [gamewidth / 2 - buttonimg.get_rect().width / 2, d - 100])
 		pygame.display.update()
 	os.remove('endview.jpg')
-	pygame.quit()
-	quit()
+	if input:
+		pygame.quit()
+		quit()
+	else:
+		return 1
 
 
 class Warp:
@@ -1160,6 +1200,17 @@ def newenemy(number):
 
 
 def gameloop():
+	EnemyShip.list = []
+	EnemyShip.difficulty = 0
+	Deathstar.list = []
+	Explosion.list = []
+	Shoot.laserlist = []
+	Meteorite.list = []
+	HealthBars.list = []
+	LevelCounter.blocks = []
+	Event.combo, Event.justhit = 0, 0
+	Warp.level = 0
+
 	game_exit = 0
 	loop = 1
 	healthbarmain = HealthBars(20, -1, 0)
@@ -1176,7 +1227,9 @@ def gameloop():
 
 	while not game_exit:
 		game_exit = getinput(mainship)
-		drawstuff(mainship, stars, event, warp, levelcounter)
+		restart = drawstuff(mainship, stars, event, warp, levelcounter)
+		if restart == 1:
+			return 1
 		clock.tick(fps)
 		loop += 1
 	try:
@@ -1187,4 +1240,6 @@ def gameloop():
 	quit()
 
 Menu()
-gameloop()
+restart = gameloop()
+while restart:
+	restart = gameloop()
