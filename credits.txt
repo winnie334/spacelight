@@ -17,3 +17,4 @@ empty lines will have an effect.
 #PLAYTESTERS:
 
 -Practically everyone I know
+-(With special thanks to Nina Appels)

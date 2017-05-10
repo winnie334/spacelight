@@ -1207,6 +1207,7 @@ def gameloop():
 	Shoot.laserlist = []
 	Meteorite.list = []
 	HealthBars.list = []
+	Stars.speed = 1
 	LevelCounter.blocks = []
 	Event.combo, Event.justhit = 0, 0
 	Warp.level = 0
